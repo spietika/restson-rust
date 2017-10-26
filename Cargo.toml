@@ -1,0 +1,15 @@
+[package]
+name = "restson"
+version = "0.0.1"
+authors = ["Sami Pietikäinen"]
+license = "MIT"
+
+[dependencies]
+hyper = "0.11.4"
+hyper-tls = "0.1.2"
+futures = "*"
+tokio-core = "*"
+serde = "*"
+serde_json = "1.0"
+serde_derive = "*"
+url = "*"
