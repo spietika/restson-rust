@@ -8,7 +8,7 @@ extern crate url;
 
 use futures::Future;
 use futures::stream::Stream;
-use hyper::{Client,Request,Method};
+use hyper::{Client,Request,Method,StatusCode};
 use hyper::header::{Authorization,Basic};
 use hyper_tls::HttpsConnector;
 use url::Url;
@@ -24,7 +24,10 @@ pub struct RestClient {
 
 #[derive(Debug)]
 pub enum Error {
-    Internal,
+    UrlError,
+    ParseError,
+    RequestError,
+    HttpError(u16),
 }
 
 pub trait RestPath<T> {
@@ -41,10 +44,15 @@ impl RestClient {
             .connector(HttpsConnector::new(4, &handle).unwrap())
             .build(&handle);
 
+        let baseurl = match Url::parse(url) {
+            Ok(url) => url,
+            Err(_) => return Err(Error::UrlError)
+        };
+
         Ok(RestClient {
             core,
             client,
-            baseurl: Url::parse(url).unwrap(),
+            baseurl,
             auth: None
         })
     }
@@ -62,37 +70,49 @@ impl RestClient {
     pub fn get<U, T>(&mut self, params: U) -> Result<T, Error> where
         T: serde::de::DeserializeOwned + RestPath<U> {
 
-        let uri = self.make_uri(T::get_path(params).as_str(), None).unwrap();
-        let body = self.run_request(Request::new(Method::Get, uri)).unwrap();
+        let uri = self.make_uri(T::get_path(params).as_str(), None)?;
+        let body = self.run_request(Request::new(Method::Get, uri))?;
 
-        Ok(serde_json::from_str(body.as_str()).unwrap())
+        match serde_json::from_str(body.as_str()) {
+            Ok(data) => Ok(data),
+            Err(_) => Err(Error::ParseError),
+        }
     }
 
     pub fn get_with<U, T>(&mut self, params: U, query: &Query) -> Result<T, Error> where
         T: serde::de::DeserializeOwned + RestPath<U> {
-        let uri = self.make_uri(T::get_path(params).as_str(), Some(query)).unwrap();
-        let body = self.run_request(Request::new(Method::Get, uri)).unwrap();
+        let uri = self.make_uri(T::get_path(params).as_str(), Some(query))?;
+        let body = self.run_request(Request::new(Method::Get, uri))?;
 
-        Ok(serde_json::from_str(body.as_str()).unwrap())
+        match serde_json::from_str(body.as_str()) {
+            Ok(data) => Ok(data),
+            Err(_) => Err(Error::ParseError),
+        }
     }
 
     pub fn post<U, T>(&mut self, params: U, data: &T) -> Result<(), Error> where 
         T: serde::Serialize + RestPath<U> {
-        let uri = self.make_uri(T::get_path(params).as_str(), None).unwrap();
+        let uri = self.make_uri(T::get_path(params).as_str(), None)?;
 
-        let data = serde_json::to_string(data).unwrap();
+        let data = match serde_json::to_string(data) {
+            Ok(data) => data,
+            Err(_) => return Err(Error::ParseError),
+        };
         self.run_post_request(data, uri)
     }
 
     pub fn post_with<U, T>(&mut self, params: U, data: &T, query: &Query) -> Result<(), Error> where 
         T: serde::Serialize + RestPath<U> {
-        let uri = self.make_uri(T::get_path(params).as_str(), Some(query)).unwrap();
+        let uri = self.make_uri(T::get_path(params).as_str(), Some(query))?;
 
-        let data = serde_json::to_string(data).unwrap();
+        let data = match serde_json::to_string(data) {
+            Ok(data) => data,
+            Err(_) => return Err(Error::ParseError),
+        };
         self.run_post_request(data, uri)
     }
 
-    fn make_uri(&self, path: &str, params: Option<&Query>) -> Result<hyper::Uri, hyper::error::UriError> {
+    fn make_uri(&self, path: &str, params: Option<&Query>) -> Result<hyper::Uri, Error> {
         let mut url = self.baseurl.clone();
         url.set_path(path);
 
@@ -102,27 +122,35 @@ impl RestClient {
             }
         }
 
-        Ok(url.as_str().parse::<hyper::Uri>()?)
+        match url.as_str().parse::<hyper::Uri>() {
+            Ok(uri) => Ok(uri),
+            Err(_) => Err(Error::UrlError),
+        }
     }
 
-    fn run_request(&mut self, mut req: hyper::Request) -> Option<String> {
+    fn run_request(&mut self, mut req: hyper::Request) -> Result<String, Error> {
         if let &Some(ref auth) = &self.auth {
             req.headers_mut().set_raw("Authorization", format!("{}", auth));
         };
 
         let req = self.client.request(req).and_then(|res| {
-            res.body().map(|chunk| {
+            if res.status() != StatusCode::Ok {
+                return Ok(Err(Error::HttpError(res.status().as_u16())));
+            }
+
+            Ok(Ok(res.body().map(|chunk| {
                 String::from_utf8_lossy(&chunk).to_string()
-            }).collect()
+            }).collect().wait()))
         });
 
         match self.core.run(req) {
-            Ok(data) => {
+            Ok(Ok(data)) => {
                 let mut out = String::new();
-                out.extend(data);
-                Some(out)
+                out.extend(data.unwrap());
+                Ok(out)
             },
-            Err(_) => None
+            Ok(Err(err)) => Err(err),
+            Err(_) => Err(Error::RequestError),
         }
     }
 
@@ -132,7 +160,7 @@ impl RestClient {
         req.headers_mut().set_raw("Content-Type", "application/json");
         req.set_body(data);
 
-        self.run_request(req);
+        self.run_request(req)?;
 
         Ok(())
     }
