@@ -26,7 +26,7 @@ fn invalid_baseurl() {
 fn invalid_get() {
     let mut client = RestClient::new("http://httpbin.org").unwrap();
 
-    if let Ok(_) = client.get::<(), InvalidResource>(()) {
+    if client.get::<(), InvalidResource>(()).is_ok() {
         panic!("expected error");
     }
 }
@@ -37,7 +37,7 @@ fn invalid_post() {
 
     let data = InvalidResource {};
 
-    if let Ok(_) = client.post((), &data) {
+    if client.post((), &data).is_ok() {
         panic!("expected error");
     }
 }

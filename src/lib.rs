@@ -13,7 +13,7 @@ use hyper::header::{Authorization,Basic};
 use hyper_tls::HttpsConnector;
 use url::Url;
 
-pub type Query<'a> = Vec<(&'a str, &'a str)>;
+pub type Query<'a> = [(&'a str, &'a str)];
 
 pub struct RestClient {
     core: tokio_core::reactor::Core,
@@ -104,7 +104,7 @@ impl RestClient {
         url.set_path(path);
 
         if let Some(params) = params {
-            for &(ref key, ref item) in params.iter() {
+            for &(key, item) in params.iter() {
                 url.query_pairs_mut().append_pair(key, item);
             }
         }
@@ -113,8 +113,8 @@ impl RestClient {
     }
 
     fn run_request(&mut self, mut req: hyper::Request) -> Result<String, Error> {
-        if let &Some(ref auth) = &self.auth {
-            req.headers_mut().set_raw("Authorization", format!("{}", auth));
+        if let Some(ref auth) = self.auth {
+            req.headers_mut().set_raw("Authorization", auth.as_str());
         };
 
         let req = self.client.request(req).and_then(|res| {

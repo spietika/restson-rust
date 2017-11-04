@@ -21,5 +21,5 @@ fn basic_auth() {
     let mut client = RestClient::new("http://httpbin.org").unwrap();
 
     client.set_auth("username", "passwd");
-    let data: HttpBinBasicAuth = client.get(("username", "passwd")).unwrap();
+    client.get::<_, HttpBinBasicAuth>(("username", "passwd")).unwrap();
 }
