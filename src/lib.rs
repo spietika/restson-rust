@@ -44,10 +44,7 @@ impl RestClient {
             .connector(HttpsConnector::new(4, &handle).unwrap())
             .build(&handle);
 
-        let baseurl = match Url::parse(url) {
-            Ok(url) => url,
-            Err(_) => return Err(Error::UrlError)
-        };
+        let baseurl = Url::parse(url).map_err(|_| Error::UrlError)?;
 
         Ok(RestClient {
             core,
@@ -73,10 +70,7 @@ impl RestClient {
         let uri = self.make_uri(T::get_path(params).as_str(), None)?;
         let body = self.run_request(Request::new(Method::Get, uri))?;
 
-        match serde_json::from_str(body.as_str()) {
-            Ok(data) => Ok(data),
-            Err(_) => Err(Error::ParseError),
-        }
+        serde_json::from_str(body.as_str()).map_err(|_| Error::ParseError)
     }
 
     pub fn get_with<U, T>(&mut self, params: U, query: &Query) -> Result<T, Error> where
@@ -84,20 +78,15 @@ impl RestClient {
         let uri = self.make_uri(T::get_path(params).as_str(), Some(query))?;
         let body = self.run_request(Request::new(Method::Get, uri))?;
 
-        match serde_json::from_str(body.as_str()) {
-            Ok(data) => Ok(data),
-            Err(_) => Err(Error::ParseError),
-        }
+        serde_json::from_str(body.as_str()).map_err(|_| Error::ParseError)
     }
 
     pub fn post<U, T>(&mut self, params: U, data: &T) -> Result<(), Error> where 
         T: serde::Serialize + RestPath<U> {
         let uri = self.make_uri(T::get_path(params).as_str(), None)?;
 
-        let data = match serde_json::to_string(data) {
-            Ok(data) => data,
-            Err(_) => return Err(Error::ParseError),
-        };
+        let data = serde_json::to_string(data).map_err(|_| Error::ParseError)?;
+
         self.run_post_request(data, uri)
     }
 
@@ -105,10 +94,8 @@ impl RestClient {
         T: serde::Serialize + RestPath<U> {
         let uri = self.make_uri(T::get_path(params).as_str(), Some(query))?;
 
-        let data = match serde_json::to_string(data) {
-            Ok(data) => data,
-            Err(_) => return Err(Error::ParseError),
-        };
+        let data = serde_json::to_string(data).map_err(|_| Error::ParseError)?;
+        
         self.run_post_request(data, uri)
     }
 
@@ -122,10 +109,7 @@ impl RestClient {
             }
         }
 
-        match url.as_str().parse::<hyper::Uri>() {
-            Ok(uri) => Ok(uri),
-            Err(_) => Err(Error::UrlError),
-        }
+        url.as_str().parse::<hyper::Uri>().map_err(|_| Error::UrlError)
     }
 
     fn run_request(&mut self, mut req: hyper::Request) -> Result<String, Error> {
