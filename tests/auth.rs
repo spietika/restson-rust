@@ -3,7 +3,7 @@ extern crate restson;
 #[macro_use]
 extern crate serde_derive;
 
-use restson::{RestClient,RestPath};
+use restson::{RestClient,RestPath,Error};
 
 #[derive(Deserialize)]
 struct HttpBinBasicAuth {
@@ -22,4 +22,15 @@ fn basic_auth() {
 
     client.set_auth("username", "passwd");
     client.get::<_, HttpBinBasicAuth>(("username", "passwd")).unwrap();
+}
+
+#[test]
+fn basic_auth_fail() {
+    let mut client = RestClient::new("http://httpbin.org").unwrap();
+
+    client.set_auth("username", "wrong_passwd");
+    match client.get::<_, HttpBinBasicAuth>(("username", "passwd")) {
+        Err(Error::HttpError(s)) if s == 401 || s == 403 => (),
+        _ => panic!("Expected Unauthorized/Forbidden HTTP error"), 
+    };
 }
