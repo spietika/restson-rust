@@ -1,3 +1,9 @@
+//! # Restson
+//! Easy-to-use REST client for Rust programming language that provides
+//! automatic serialization and deserialization from Rust structs. The library
+//! is implemented using [Hyper](https://github.com/hyperium/hyper) and 
+//! [Serde JSON](https://github.com/serde-rs/json).
+
 extern crate futures;
 extern crate hyper;
 extern crate hyper_tls;
@@ -13,8 +19,20 @@ use hyper::header::{Authorization,Basic};
 use hyper_tls::HttpsConnector;
 use url::Url;
 
+/// Type for URL query parameters. 
+///
+/// Slice of tuples in which the first field is parameter name and second is value.
+/// These parameters are used with `get_with` and `post_with` functions.
+///
+/// # Examples
+/// The vector
+/// ```ignore
+/// vec![("param1", "1234"), ("param2", "abcd")]
+/// ```
+/// would be parsed to **param1=1234&param2=abcd** in the request URL.
 pub type Query<'a> = [(&'a str, &'a str)];
 
+/// REST client to make HTTP GET and POST requests.
 pub struct RestClient {
     core: tokio_core::reactor::Core,
     client: Client<HttpsConnector<hyper::client::HttpConnector>>,
@@ -22,20 +40,37 @@ pub struct RestClient {
     auth: Option<String>,
 }
 
+/// Restson error return type.
 #[derive(Debug)]
 pub enum Error {
+    /// Failed to parse final URL.
     UrlError,
+
+    /// Failed to deserialize data to struct (in GET) or failed to 
+    /// serialize struct to JSON (in POST).
     ParseError,
+
+    /// Failed to make the outgoing request.
     RequestError,
+
+    /// Server returned non-OK status.
     HttpError(u16),
 }
 
+/// Rest path builder trait for type.
+///
+/// Provides implementation for `rest_path` function that builds
+/// type (and REST endpoint) specific API path from given parameter(s).
+/// The built REST path is appended to the base URL given to `RestClient`.
 pub trait RestPath<T> {
+    /// Construct type specific REST API path from given parameters 
+    /// (e.g. "api/devices/1234").
     fn get_path(par: T) -> String;
 }
 
 
 impl RestClient {
+    /// Construct new client to make HTTP requests.
     pub fn new(url: &str) -> Result<RestClient, Error> {
         let core = tokio_core::reactor::Core::new().unwrap();
 
@@ -54,6 +89,7 @@ impl RestClient {
         })
     }
 
+    /// Set credentials for HTTP Basic authentication.
     pub fn set_auth(&mut self, user: &str, pass: &str) {
         let auth = Authorization(
             Basic {
@@ -64,6 +100,7 @@ impl RestClient {
         self.auth = Some(format!("{}", auth));   
     }
 
+    /// Make a GET request.
     pub fn get<U, T>(&mut self, params: U) -> Result<T, Error> where
         T: serde::de::DeserializeOwned + RestPath<U> {
 
@@ -73,6 +110,7 @@ impl RestClient {
         serde_json::from_str(body.as_str()).map_err(|_| Error::ParseError)
     }
 
+    /// Make a GET request with query parameters.
     pub fn get_with<U, T>(&mut self, params: U, query: &Query) -> Result<T, Error> where
         T: serde::de::DeserializeOwned + RestPath<U> {
         let uri = self.make_uri(T::get_path(params).as_str(), Some(query))?;
@@ -81,6 +119,7 @@ impl RestClient {
         serde_json::from_str(body.as_str()).map_err(|_| Error::ParseError)
     }
 
+    /// Make a POST request.
     pub fn post<U, T>(&mut self, params: U, data: &T) -> Result<(), Error> where 
         T: serde::Serialize + RestPath<U> {
         let uri = self.make_uri(T::get_path(params).as_str(), None)?;
@@ -90,6 +129,7 @@ impl RestClient {
         self.run_post_request(data, uri)
     }
 
+    /// Make POST request with query parameters.
     pub fn post_with<U, T>(&mut self, params: U, data: &T, query: &Query) -> Result<(), Error> where 
         T: serde::Serialize + RestPath<U> {
         let uri = self.make_uri(T::get_path(params).as_str(), Some(query))?;
