@@ -126,7 +126,8 @@ impl RestClient {
 
         let data = serde_json::to_string(data).map_err(|_| Error::ParseError)?;
 
-        self.run_post_request(data, uri)
+        self.run_post_request(data, uri)?;
+        Ok(())
     }
 
     /// Make POST request with query parameters.
@@ -136,7 +137,32 @@ impl RestClient {
 
         let data = serde_json::to_string(data).map_err(|_| Error::ParseError)?;
         
-        self.run_post_request(data, uri)
+        self.run_post_request(data, uri)?;
+        Ok(())
+    }
+
+    /// Make a POST request and capture returned body.
+    pub fn post_capture<U, T, K>(&mut self, params: U, data: &T) -> Result<K, Error> where 
+        T: serde::Serialize + RestPath<U>,
+        K: serde::de::DeserializeOwned {
+        let uri = self.make_uri(T::get_path(params).as_str(), None)?;
+
+        let data = serde_json::to_string(data).map_err(|_| Error::ParseError)?;
+
+        let body = self.run_post_request(data, uri)?;
+        serde_json::from_str(body.as_str()).map_err(|_| Error::ParseError)
+    }
+
+    /// Make a POST request with query parameters and capture returned body.
+    pub fn post_capture_with<U, T, K>(&mut self, params: U, data: &T, query: &Query) -> Result<K, Error> where 
+        T: serde::Serialize + RestPath<U>,
+        K: serde::de::DeserializeOwned {
+        let uri = self.make_uri(T::get_path(params).as_str(), Some(query))?;
+
+        let data = serde_json::to_string(data).map_err(|_| Error::ParseError)?;
+
+        let body = self.run_post_request(data, uri)?;
+        serde_json::from_str(body.as_str()).map_err(|_| Error::ParseError)
     }
 
     fn make_uri(&self, path: &str, params: Option<&Query>) -> Result<hyper::Uri, Error> {
@@ -178,14 +204,12 @@ impl RestClient {
         }
     }
 
-    fn run_post_request(&mut self, data: String, uri: hyper::Uri) -> Result<(), Error> {
+    fn run_post_request(&mut self, data: String, uri: hyper::Uri) -> Result<String, Error> {
         let mut req: Request = Request::new(Method::Post, uri);
         req.headers_mut().set_raw("Content-Length", format!("{}", data.len()));
         req.headers_mut().set_raw("Content-Type", "application/json");
         req.set_body(data);
 
-        self.run_request(req)?;
-
-        Ok(())
+        Ok(self.run_request(req)?)
     }
 } 
