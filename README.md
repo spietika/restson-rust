@@ -16,7 +16,7 @@ This adds dependencies for the Restson library and also for Serde which is neede
 
 ### Data structures
 
-Next, the data structures for the REST interface should be defined. The struct fields need to match with the API JSON fields. The whole JSON does not need to be defined, the struct can also contain only subset of the fields. Structs that are used with `GET` should derive `Deserialize` and structs that are used with `POST` should derive `Serialize`.
+Next, the data structures for the REST interface should be defined. The struct fields need to match with the API JSON fields. The whole JSON does not need to be defined, the struct can also contain a subset of the fields. Structs that are used with `GET` should derive `Deserialize` and structs that are used with `POST` should derive `Serialize`.
 
 Example JSON (subset of http://httpbin.org/anything response):
 ```json
@@ -65,7 +65,8 @@ To run requests the client instance needs to be created first. The base URL of t
 let mut client = RestClient::new("http://httpbin.org").unwrap();
 ```
 
-Example `GET` request:
+#### GET
+The following snippet shows an example `GET` request:
 ```rust
 // Gets https://httpbin.org/anything/1234 and deserializes the JSON to data variable
 let data: HttpBinAnything = client.get(1234).unwrap();
@@ -75,6 +76,33 @@ The `get` and `post` functions call the `get_path` function automatically from `
 ```rust
 let data = client.get::<u32, HttpBinAnything>(1234).unwrap();
 ```
+Restson also provides `get_with` function which is similar to the basic `get` but it also accepts additional query parameters that are added to the request URL.
+```rust
+// Gets http://httpbin.org/anything/1234?a=2&b=abcd
+let query = vec![("a","2"), ("b","abcd")];
+let data: HttpBinAnything = client.get_with(1234, &query).unwrap();
+```
+Both GET interfaces return `Result<T, Error>` where T is the target type in which the returned JSON is deserialized to.
+
+#### POST
+The following snippets show an example `POST` request:
+```rust
+#[derive(Serialize)]
+struct HttpBinPost {
+    data: String,
+}
+
+impl RestPath<()> for HttpBinPost {
+    fn get_path(_: ()) -> String { String::from("post") }
+}
+```
+```rust
+let data = HttpBinPost { data: String::from("test data")};
+// Posts data to http://httpbin.org/post
+client.post((), &data).unwrap();
+```
+In addition to the basic `post` interface, it is also possible to provide query parameters with `post_with` function. Also, `post_capture` and `post_capture_with` interfaces allow to capture and deserialize the message body returned by the server in the POST request.
+
 ### Examples
 For more examples see *tests* directory. 
 
