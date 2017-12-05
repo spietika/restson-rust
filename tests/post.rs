@@ -3,7 +3,7 @@ extern crate restson;
 #[macro_use]
 extern crate serde_derive;
 
-use restson::{RestClient,RestPath};
+use restson::{RestClient,RestPath,Error};
 
 #[derive(Serialize,Deserialize)]
 struct HttpBinPost {
@@ -17,7 +17,7 @@ struct HttpBinPostResp {
 }
 
 impl RestPath<()> for HttpBinPost {
-    fn get_path(_: ()) -> String { String::from("post") }
+    fn get_path(_: ()) -> Result<String,Error> { Ok(String::from("post")) }
 }
 
 #[test]

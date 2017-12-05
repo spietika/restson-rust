@@ -10,9 +10,9 @@ struct HttpBinBasicAuth {
 }
 
 impl<'a> RestPath<(&'a str,&'a str)> for HttpBinBasicAuth {
-    fn get_path(auth: (&str,&str)) -> String { 
+    fn get_path(auth: (&str,&str)) -> Result<String, Error> { 
         let (user,pass) = auth;
-        format!("basic-auth/{}/{}", user, pass) 
+        Ok(format!("basic-auth/{}/{}", user, pass))
     }
 }
 

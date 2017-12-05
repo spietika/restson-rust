@@ -10,7 +10,16 @@ struct InvalidResource {
 }
 
 impl RestPath<()> for InvalidResource {
-    fn get_path(_: ()) -> String { String::from("not_found") }
+    fn get_path(_: ()) -> Result<String,Error> { Ok(String::from("not_found")) }
+}
+
+impl RestPath<bool> for InvalidResource {
+    fn get_path(param: bool) -> Result<String,Error> { 
+        if param {
+            return Ok(String::from("path"));
+        }
+        Err(Error::UrlError)
+    }
 }
 
 
@@ -39,5 +48,16 @@ fn invalid_post() {
 
     if client.post((), &data).is_ok() {
         panic!("expected error");
+    }
+}
+
+#[test]
+fn path_error() {
+    let mut client = RestClient::new("http://httpbin.org").unwrap();
+
+    if let Err(Error::UrlError) = client.get::<bool, InvalidResource>(false) {
+    }
+    else {
+        panic!("expected url error");
     }
 }

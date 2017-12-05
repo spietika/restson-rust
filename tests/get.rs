@@ -3,7 +3,7 @@ extern crate restson;
 #[macro_use]
 extern crate serde_derive;
 
-use restson::{RestClient,RestPath};
+use restson::{RestClient,RestPath,Error};
 
 #[derive(Deserialize)]
 struct HttpBinAnything {
@@ -20,17 +20,17 @@ struct HttpBinAnythingArgs {
 }
 
 impl RestPath<()> for HttpBinAnything {
-    fn get_path(_: ()) -> String { String::from("anything") }
+    fn get_path(_: ()) -> Result<String,Error> { Ok(String::from("anything")) }
 }
 
 impl RestPath<u32> for HttpBinAnything {
-    fn get_path(param: u32) -> String { format!("anything/{}", param) }
+    fn get_path(param: u32) -> Result<String,Error> { Ok(format!("anything/{}", param)) }
 }
 
 impl<'a> RestPath<(u32, &'a str)> for HttpBinAnything {
-    fn get_path(param: (u32, &str)) -> String { 
+    fn get_path(param: (u32, &str)) -> Result<String,Error> { 
         let (a,b) = param;
-        format!("anything/{}/{}", a, b)
+        Ok(format!("anything/{}/{}", a, b))
     }
 }
 

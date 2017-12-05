@@ -44,17 +44,17 @@ These definitions allow to automatically serialize/deserialize the data structur
 
 In Restson library the API resource paths are associated with types. That is, the URL is constructed automatically and not given as parameter to requests. This allows to easily parametrize the paths without manual URL processing and reduces URL literals in the code.
 
-Each type that is used with `get`/`post` needs to implement `RestPath` trait. The trait can be implemented multiple times with different generic parameters for the same type as shown below.
+Each type that is used with `get`/`post` needs to implement `RestPath` trait. The trait can be implemented multiple times with different generic parameters for the same type as shown below. The `get_path` can also return error to indicate that the parameters were not valid. This error is propagated directly to the client caller.
 
 ```rust
 // plain API call without parameters
 impl RestPath<()> for HttpBinAnything {
-    fn get_path(_: ()) -> String { String::from("anything") }
+    fn get_path(_: ()) -> Result<String,Error> { Ok(String::from("anything")) }
 }
 
 // API call with one u32 parameter (e.g. "http://httpbin.org/anything/1234")
 impl RestPath<u32> for HttpBinAnything {
-    fn get_path(param: u32) -> String { format!("anything/{}", param) }
+    fn get_path(param: u32) -> Result<String,Error> { Ok(format!("anything/{}", param)) }
 }
 ```
 
@@ -93,7 +93,7 @@ struct HttpBinPost {
 }
 
 impl RestPath<()> for HttpBinPost {
-    fn get_path(_: ()) -> String { String::from("post") }
+    fn get_path(_: ()) -> Result<String,Error> { Ok(String::from("post")) }
 }
 ```
 ```rust

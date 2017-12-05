@@ -62,10 +62,11 @@ pub enum Error {
 /// Provides implementation for `rest_path` function that builds
 /// type (and REST endpoint) specific API path from given parameter(s).
 /// The built REST path is appended to the base URL given to `RestClient`.
+/// If `Err` is returned, it is propagated directly to API caller.
 pub trait RestPath<T> {
     /// Construct type specific REST API path from given parameters 
     /// (e.g. "api/devices/1234").
-    fn get_path(par: T) -> String;
+    fn get_path(par: T) -> Result<String, Error>;
 }
 
 
@@ -104,7 +105,7 @@ impl RestClient {
     pub fn get<U, T>(&mut self, params: U) -> Result<T, Error> where
         T: serde::de::DeserializeOwned + RestPath<U> {
 
-        let uri = self.make_uri(T::get_path(params).as_str(), None)?;
+        let uri = self.make_uri(T::get_path(params)?.as_str(), None)?;
         let body = self.run_request(Request::new(Method::Get, uri))?;
 
         serde_json::from_str(body.as_str()).map_err(|_| Error::ParseError)
@@ -113,7 +114,7 @@ impl RestClient {
     /// Make a GET request with query parameters.
     pub fn get_with<U, T>(&mut self, params: U, query: &Query) -> Result<T, Error> where
         T: serde::de::DeserializeOwned + RestPath<U> {
-        let uri = self.make_uri(T::get_path(params).as_str(), Some(query))?;
+        let uri = self.make_uri(T::get_path(params)?.as_str(), Some(query))?;
         let body = self.run_request(Request::new(Method::Get, uri))?;
 
         serde_json::from_str(body.as_str()).map_err(|_| Error::ParseError)
@@ -122,7 +123,7 @@ impl RestClient {
     /// Make a POST request.
     pub fn post<U, T>(&mut self, params: U, data: &T) -> Result<(), Error> where 
         T: serde::Serialize + RestPath<U> {
-        let uri = self.make_uri(T::get_path(params).as_str(), None)?;
+        let uri = self.make_uri(T::get_path(params)?.as_str(), None)?;
 
         let data = serde_json::to_string(data).map_err(|_| Error::ParseError)?;
 
@@ -133,7 +134,7 @@ impl RestClient {
     /// Make POST request with query parameters.
     pub fn post_with<U, T>(&mut self, params: U, data: &T, query: &Query) -> Result<(), Error> where 
         T: serde::Serialize + RestPath<U> {
-        let uri = self.make_uri(T::get_path(params).as_str(), Some(query))?;
+        let uri = self.make_uri(T::get_path(params)?.as_str(), Some(query))?;
 
         let data = serde_json::to_string(data).map_err(|_| Error::ParseError)?;
         
@@ -145,7 +146,7 @@ impl RestClient {
     pub fn post_capture<U, T, K>(&mut self, params: U, data: &T) -> Result<K, Error> where 
         T: serde::Serialize + RestPath<U>,
         K: serde::de::DeserializeOwned {
-        let uri = self.make_uri(T::get_path(params).as_str(), None)?;
+        let uri = self.make_uri(T::get_path(params)?.as_str(), None)?;
 
         let data = serde_json::to_string(data).map_err(|_| Error::ParseError)?;
 
@@ -157,7 +158,7 @@ impl RestClient {
     pub fn post_capture_with<U, T, K>(&mut self, params: U, data: &T, query: &Query) -> Result<K, Error> where 
         T: serde::Serialize + RestPath<U>,
         K: serde::de::DeserializeOwned {
-        let uri = self.make_uri(T::get_path(params).as_str(), Some(query))?;
+        let uri = self.make_uri(T::get_path(params)?.as_str(), Some(query))?;
 
         let data = serde_json::to_string(data).map_err(|_| Error::ParseError)?;
 
