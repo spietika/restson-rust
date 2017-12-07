@@ -103,6 +103,9 @@ client.post((), &data).unwrap();
 ```
 In addition to the basic `post` interface, it is also possible to provide query parameters with `post_with` function. Also, `post_capture` and `post_capture_with` interfaces allow to capture and deserialize the message body returned by the server in the POST request.
 
+### Logging
+The library uses the `log` crate to provide debug and trace logs. These logs allow to easily see both outgoing requests as well as incoming responses from the server. See the [log crate documentation](https://docs.rs/log/*/log/) for details.
+
 ### Examples
 For more examples see *tests* directory. 
 

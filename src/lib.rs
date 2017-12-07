@@ -11,6 +11,8 @@ extern crate tokio_core;
 extern crate serde;
 extern crate serde_json;
 extern crate url;
+#[macro_use] 
+extern crate log;
 
 use futures::Future;
 use futures::stream::Stream;
@@ -82,6 +84,7 @@ impl RestClient {
 
         let baseurl = Url::parse(url).map_err(|_| Error::UrlError)?;
 
+        debug!("new client for {}", baseurl);
         Ok(RestClient {
             core,
             client,
@@ -184,8 +187,13 @@ impl RestClient {
             req.headers_mut().set_raw("Authorization", auth.as_str());
         };
 
+        debug!("{} {}", req.method(), req.uri());
+        trace!("{:?}", req);
         let req = self.client.request(req).and_then(|res| {
+            trace!("response headers: {:?}", res.headers());
+
             if res.status() != StatusCode::Ok {
+                error!("server returned \"{}\" error", res.status());
                 return Ok(Err(Error::HttpError(res.status().as_u16())));
             }
 
@@ -198,10 +206,18 @@ impl RestClient {
             Ok(Ok(data)) => {
                 let mut out = String::new();
                 out.extend(data.unwrap());
+                trace!("response body: {}", out);
+                debug!("request completed succesfully");
                 Ok(out)
             },
-            Ok(Err(err)) => Err(err),
-            Err(_) => Err(Error::RequestError),
+            Ok(Err(err)) => {
+                error!("request failed");
+                Err(err)
+            },
+            Err(_) => {
+                error!("request failed");
+                Err(Error::RequestError)
+            },
         }
     }
 
@@ -209,6 +225,8 @@ impl RestClient {
         let mut req: Request = Request::new(Method::Post, uri);
         req.headers_mut().set_raw("Content-Length", format!("{}", data.len()));
         req.headers_mut().set_raw("Content-Type", "application/json");
+
+        trace!("set request body: {}", data);
         req.set_body(data);
 
         Ok(self.run_request(req)?)
