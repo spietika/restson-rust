@@ -17,7 +17,7 @@ extern crate log;
 use futures::Future;
 use futures::stream::Stream;
 use hyper::{Client,Request,Method,StatusCode};
-use hyper::header::{Authorization,Basic};
+use hyper::header::{ContentLength,ContentType,Authorization,Basic};
 use hyper_tls::HttpsConnector;
 use url::Url;
 
@@ -39,7 +39,7 @@ pub struct RestClient {
     core: tokio_core::reactor::Core,
     client: Client<HttpsConnector<hyper::client::HttpConnector>>,
     baseurl: url::Url,
-    auth: Option<String>,
+    auth: Option<Authorization<Basic>>,
 }
 
 /// Restson error return type.
@@ -89,19 +89,17 @@ impl RestClient {
             core,
             client,
             baseurl,
-            auth: None
+            auth: None,
         })
     }
 
     /// Set credentials for HTTP Basic authentication.
-    pub fn set_auth(&mut self, user: &str, pass: &str) {
-        let auth = Authorization(
+    pub fn set_auth(&mut self, user: &str, pass: &str) { 
+        self.auth = Some(Authorization(
             Basic {
                 username: user.to_owned(),
                 password: Some(pass.to_owned())
-        });
-
-        self.auth = Some(format!("{}", auth));   
+        }));
     }
 
     /// Make a GET request.
@@ -184,7 +182,7 @@ impl RestClient {
 
     fn run_request(&mut self, mut req: hyper::Request) -> Result<String, Error> {
         if let Some(ref auth) = self.auth {
-            req.headers_mut().set_raw("Authorization", auth.as_str());
+            req.headers_mut().set(auth.clone());
         };
 
         debug!("{} {}", req.method(), req.uri());
@@ -223,8 +221,8 @@ impl RestClient {
 
     fn run_post_request(&mut self, data: String, uri: hyper::Uri) -> Result<String, Error> {
         let mut req: Request = Request::new(Method::Post, uri);
-        req.headers_mut().set_raw("Content-Length", format!("{}", data.len()));
-        req.headers_mut().set_raw("Content-Type", "application/json");
+        req.headers_mut().set(ContentLength(data.len() as u64));
+        req.headers_mut().set(ContentType(hyper::mime::APPLICATION_JSON));
 
         trace!("set request body: {}", data);
         req.set_body(data);
