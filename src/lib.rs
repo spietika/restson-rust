@@ -45,6 +45,9 @@ pub struct RestClient {
 /// Restson error return type.
 #[derive(Debug)]
 pub enum Error {
+    /// HTTP client creation failed
+    HttpClientError,
+
     /// Failed to parse final URL.
     UrlError,
 
@@ -75,11 +78,11 @@ pub trait RestPath<T> {
 impl RestClient {
     /// Construct new client to make HTTP requests.
     pub fn new(url: &str) -> Result<RestClient, Error> {
-        let core = tokio_core::reactor::Core::new().unwrap();
+        let core = tokio_core::reactor::Core::new().map_err(|_| Error::HttpClientError)?;
 
         let handle = core.handle();
         let client = Client::configure()
-            .connector(HttpsConnector::new(4, &handle).unwrap())
+            .connector(HttpsConnector::new(4, &handle).map_err(|_| Error::HttpClientError)?)
             .build(&handle);
 
         let baseurl = Url::parse(url).map_err(|_| Error::UrlError)?;
