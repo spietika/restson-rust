@@ -17,7 +17,7 @@ extern crate log;
 use futures::Future;
 use futures::stream::Stream;
 use hyper::{Client,Request,Method,StatusCode};
-use hyper::header::{ContentLength,ContentType,Authorization,Basic};
+use hyper::header::*;
 use hyper_tls::HttpsConnector;
 use url::Url;
 
@@ -40,6 +40,7 @@ pub struct RestClient {
     client: Client<HttpsConnector<hyper::client::HttpConnector>>,
     baseurl: url::Url,
     auth: Option<Authorization<Basic>>,
+    headers: Headers,
 }
 
 /// Restson error return type.
@@ -93,6 +94,7 @@ impl RestClient {
             client,
             baseurl,
             auth: None,
+            headers: Headers::new(),
         })
     }
 
@@ -103,6 +105,27 @@ impl RestClient {
                 username: user.to_owned(),
                 password: Some(pass.to_owned())
         }));
+    }
+
+    /// Set HTTP header from string name and value.
+    ///
+    /// The header is added to all subsequent GET and POST requests
+    /// unless the headers are cleared with `clear_headers()` call.
+    pub fn set_header_raw(&mut self, name: &str, value: &str) {
+        self.headers.set_raw(name.to_owned(), value)
+    }
+
+    /// Set HTTP header from hyper Header.
+    ///
+    /// The header is added to all subsequent GET and POST requests
+    /// unless the headers are cleared with `clear_headers()` call.
+    pub fn set_header<H: Header>(&mut self, header: H) {
+        self.headers.set(header)
+    }
+
+    /// Clear all previously set headers
+    pub fn clear_headers(&mut self) {
+        self.headers.clear();
     }
 
     /// Make a GET request.
@@ -187,6 +210,8 @@ impl RestClient {
         if let Some(ref auth) = self.auth {
             req.headers_mut().set(auth.clone());
         };
+
+        req.headers_mut().extend(self.headers.iter());
 
         debug!("{} {}", req.method(), req.uri());
         trace!("{:?}", req);
