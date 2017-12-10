@@ -1,7 +1,11 @@
 [package]
 name = "restson"
-version = "0.0.1"
+version = "0.1.0"
 authors = ["Sami Pietikäinen"]
+description = "Easy-to-use REST client for Rust with automatic serialization and deserialization."
+repository = "https://github.com/spietika/restson-rust"
+keywords = ["rest", "client", "json", "hyper"]
+readme = "README.md"
 license = "MIT"
 
 [dependencies]
