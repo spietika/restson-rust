@@ -8,7 +8,7 @@ Add the following lines to your project `Cargo.toml` file:
 
 ```toml
 [dependencies]
-restson = { git = "https://github.com/spietika/restson-rust"}
+restson = "^0.1"
 serde = "^1.0"
 serde_derive = "^1.0"
 ```
@@ -66,6 +66,7 @@ let mut client = RestClient::new("http://httpbin.org").unwrap();
 ```
 
 #### GET
+
 The following snippet shows an example `GET` request:
 ```rust
 // Gets https://httpbin.org/anything/1234 and deserializes the JSON to data variable
@@ -85,6 +86,7 @@ let data: HttpBinAnything = client.get_with(1234, &query).unwrap();
 Both GET interfaces return `Result<T, Error>` where T is the target type in which the returned JSON is deserialized to.
 
 #### POST
+
 The following snippets show an example `POST` request:
 ```rust
 #[derive(Serialize)]
