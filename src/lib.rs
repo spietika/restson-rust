@@ -245,35 +245,32 @@ impl RestClient {
 
         debug!("{} {}", req.method(), req.uri());
         trace!("{:?}", req);
+
         let req = self.client.request(req).and_then(|res| {
             trace!("response headers: {:?}", res.headers());
 
-            if res.status() != StatusCode::Ok {
-                error!("server returned \"{}\" error", res.status());
-                return Ok(Err(Error::HttpError(res.status().as_u16())));
-            }
-
-            Ok(Ok(res.body().map(|chunk| {
+            let status = Box::new(res.status());
+            res.body().map(|chunk| {
                 String::from_utf8_lossy(&chunk).to_string()
-            }).collect().wait()))
+            }).collect().map(|vec| {
+                (status, vec)
+            })
         });
 
         match self.core.run(req) {
-            Ok(Ok(data)) => {
+            Ok(data) => {
                 let mut out = String::new();
-                out.extend(data.unwrap());
-                trace!("response body: {}", out);
-                debug!("request completed succesfully");
+                let (status, vec) = data;
+
+                if *status != StatusCode::Ok {
+                    error!("server returned \"{}\" error", *status);
+                    return Err(Error::HttpError( (*status).as_u16() ));
+                }
+
+                out.extend(vec);
                 Ok(out)
             },
-            Ok(Err(err)) => {
-                error!("request failed");
-                Err(err)
-            },
-            Err(_) => {
-                error!("request failed");
-                Err(Error::RequestError)
-            },
+            Err(_) => Err(Error::RequestError)
         }
     }
 
