@@ -105,6 +105,41 @@ client.post((), &data).unwrap();
 ```
 In addition to the basic `post` interface, it is also possible to provide query parameters with `post_with` function. Also, `post_capture` and `post_capture_with` interfaces allow to capture and deserialize the message body returned by the server in the POST request.
 
+### JSON with array root element
+
+In all of the examples above the JSON structure consists of key-value pairs that can be represented with Rust structs. However, it is also possible that valid JSON has array root element without a key. For example, the following is valid JSON.
+
+```json
+["a","b","c"]
+```
+
+It is possible to work with APIs returning arrays in Restson. However instead of a struct, the user type needs to be a container. `Vec<String>` in this case. The type also needs to implement the `RestPath` trait as explained before, and easiest way to do so is to wrap the container in `enum`.
+
+```rust
+#[macro_use]
+extern crate serde_derive;
+extern crate serde;
+
+extern crate restson;
+use restson::{RestClient,RestPath,Error};
+
+#[derive(Deserialize,Debug)]
+#[serde(untagged)]
+enum MyData {
+    Array(Vec<String>)
+}
+
+impl RestPath<()> for MyData {
+    fn get_path(_: ()) -> Result<String,Error> { Ok(String::from("array")) }
+}
+
+fn main() {
+    let mut client = RestClient::new("http://localhost:8080").unwrap();
+    let data: MyData = client.get(()).unwrap();
+    println!("{:?}", data);
+}
+```
+
 ### Logging
 The library uses the `log` crate to provide debug and trace logs. These logs allow to easily see both outgoing requests as well as incoming responses from the server. See the [log crate documentation](https://docs.rs/log/*/log/) for details.
 
