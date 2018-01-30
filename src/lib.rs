@@ -253,22 +253,17 @@ impl RestClient {
             res.body().map(|chunk| {
                 String::from_utf8_lossy(&chunk).to_string()
             }).collect().map(|vec| {
-                (status, vec)
+                (status, vec.into_iter().collect())
             })
         });
 
         match self.core.run(req) {
-            Ok(data) => {
-                let mut out = String::new();
-                let (status, vec) = data;
-
+            Ok((status, body)) => {
                 if *status != StatusCode::Ok {
                     error!("server returned \"{}\" error", *status);
                     return Err(Error::HttpError( (*status).as_u16() ));
                 }
-
-                out.extend(vec);
-                Ok(out)
+                Ok(body)
             },
             Err(_) => Err(Error::RequestError)
         }
