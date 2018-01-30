@@ -65,7 +65,7 @@ To run requests the client instance needs to be created first. The base URL of t
 let mut client = RestClient::new("http://httpbin.org").unwrap();
 ```
 
-#### GET
+**GET**
 
 The following snippet shows an example `GET` request:
 ```rust
@@ -85,7 +85,7 @@ let data: HttpBinAnything = client.get_with(1234, &query).unwrap();
 ```
 Both GET interfaces return `Result<T, Error>` where T is the target type in which the returned JSON is deserialized to.
 
-#### POST
+**POST**
 
 The following snippets show an example `POST` request:
 ```rust
@@ -104,6 +104,29 @@ let data = HttpBinPost { data: String::from("test data")};
 client.post((), &data).unwrap();
 ```
 In addition to the basic `post` interface, it is also possible to provide query parameters with `post_with` function. Also, `post_capture` and `post_capture_with` interfaces allow to capture and deserialize the message body returned by the server in the POST request.
+
+**DELETE**
+
+Restson supports HTTP DELETE requests to API paths. DELETE request is sent to API URL without message body. Moreover, the response status code from server is checked, but the response body is not captured.
+
+Similarly with other requests, the path is obtained from `RestPath` trait.
+
+```rust
+struct HttpBinDelete {
+}
+
+impl RestPath<()> for HttpBinDelete {
+    fn get_path(_: ()) -> Result<String,Error> { Ok(String::from("delete")) }
+}
+```
+
+The `delete` function does not return any data (only possible error) so the type needs to be annotated.
+
+```rust
+// DELETE request to http://httpbin.org/delete
+let mut client = RestClient::new("http://httpbin.org").unwrap();
+client.delete::<(), HttpBinDelete>(()).unwrap();
+```
 
 ### JSON with array root element
 

@@ -223,6 +223,16 @@ impl RestClient {
         serde_json::from_str(body.as_str()).map_err(|_| Error::ParseError)
     }
 
+    /// Make a DELETE request.
+    pub fn delete<U, T>(&mut self, params: U) -> Result<(), Error> where
+        T: RestPath<U> {
+
+        let uri = self.make_uri(T::get_path(params)?.as_str(), None)?;
+        self.run_request(Request::new(Method::Delete, uri))?;
+
+        Ok(())
+    }
+
     fn make_uri(&self, path: &str, params: Option<&Query>) -> Result<hyper::Uri, Error> {
         let mut url = self.baseurl.clone();
         url.set_path(path);
@@ -263,6 +273,7 @@ impl RestClient {
                     error!("server returned \"{}\" error", *status);
                     return Err(Error::HttpError( (*status).as_u16() ));
                 }
+                trace!("response body: {}", body);
                 Ok(body)
             },
             Err(_) => Err(Error::RequestError)
@@ -279,4 +290,4 @@ impl RestClient {
 
         Ok(self.run_request(req)?)
     }
-} 
+}
