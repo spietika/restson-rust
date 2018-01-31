@@ -46,7 +46,7 @@ extern crate log;
 
 use futures::Future;
 use futures::stream::Stream;
-use hyper::{Client,Request,Method,StatusCode};
+use hyper::{Client,Request,Method};
 use hyper::header::*;
 use hyper_tls::HttpsConnector;
 use url::Url;
@@ -269,9 +269,10 @@ impl RestClient {
 
         match self.core.run(req) {
             Ok((status, body)) => {
-                if *status != StatusCode::Ok {
-                    error!("server returned \"{}\" error", *status);
-                    return Err(Error::HttpError( (*status).as_u16() ));
+                let status = *status;
+                if !status.is_success() {
+                    error!("server returned \"{}\" error", status);
+                    return Err(Error::HttpError( status.as_u16() ));
                 }
                 trace!("response body: {}", body);
                 Ok(body)
