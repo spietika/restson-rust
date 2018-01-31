@@ -1,5 +1,5 @@
 
-[![crates.io: v0.1.1](https://img.shields.io/crates/v/restson.svg)](https://crates.io/crates/restson) [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://raw.githubusercontent.com/spietika/restson-rust/master/LICENSE) [![Docs: 0.1.1](https://img.shields.io/badge/Docs-0.1.1-green.svg)](https://docs.rs/restson/)
+[![crates.io](https://img.shields.io/crates/v/restson.svg)](https://crates.io/crates/restson) [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://raw.githubusercontent.com/spietika/restson-rust/master/LICENSE) [![Docs: latest](https://img.shields.io/badge/Docs-latest-green.svg)](https://docs.rs/restson/)
 
 # Restson Rust
 
