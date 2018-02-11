@@ -91,7 +91,7 @@ pub enum Error {
     RequestError,
 
     /// Server returned non-success status.
-    HttpError(u16),
+    HttpError(u16, String),
 }
 
 /// Rest path builder trait for type.
@@ -303,7 +303,7 @@ impl RestClient {
                 let status = *status;
                 if !status.is_success() {
                     error!("server returned \"{}\" error", status);
-                    return Err(Error::HttpError( status.as_u16() ));
+                    return Err(Error::HttpError( status.as_u16(), body ));
                 }
                 trace!("response body: {}", body);
                 Ok(body)
