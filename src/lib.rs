@@ -162,8 +162,8 @@ impl RestClient {
     pub fn get<U, T>(&mut self, params: U) -> Result<T, Error> where
         T: serde::de::DeserializeOwned + RestPath<U> {
 
-        let uri = self.make_uri(T::get_path(params)?.as_str(), None)?;
-        let body = self.run_request(Request::new(Method::Get, uri))?;
+        let req = self.make_request::<U,T>(Method::Get, params, None, None)?;
+        let body = self.run_request(req)?;
 
         serde_json::from_str(body.as_str()).map_err(|_| Error::ParseError)
     }
@@ -171,8 +171,8 @@ impl RestClient {
     /// Make a GET request with query parameters.
     pub fn get_with<U, T>(&mut self, params: U, query: &Query) -> Result<T, Error> where
         T: serde::de::DeserializeOwned + RestPath<U> {
-        let uri = self.make_uri(T::get_path(params)?.as_str(), Some(query))?;
-        let body = self.run_request(Request::new(Method::Get, uri))?;
+        let req = self.make_request::<U,T>(Method::Get, params, Some(query), None)?;
+        let body = self.run_request(req)?;
 
         serde_json::from_str(body.as_str()).map_err(|_| Error::ParseError)
     }
@@ -180,22 +180,20 @@ impl RestClient {
     /// Make a POST request.
     pub fn post<U, T>(&mut self, params: U, data: &T) -> Result<(), Error> where 
         T: serde::Serialize + RestPath<U> {
-        let uri = self.make_uri(T::get_path(params)?.as_str(), None)?;
-
         let data = serde_json::to_string(data).map_err(|_| Error::ParseError)?;
 
-        self.run_post_request(data, uri)?;
+        let req = self.make_request::<U,T>(Method::Post, params, None, Some(data))?;
+        self.run_request(req)?;
         Ok(())
     }
 
     /// Make POST request with query parameters.
     pub fn post_with<U, T>(&mut self, params: U, data: &T, query: &Query) -> Result<(), Error> where 
         T: serde::Serialize + RestPath<U> {
-        let uri = self.make_uri(T::get_path(params)?.as_str(), Some(query))?;
-
         let data = serde_json::to_string(data).map_err(|_| Error::ParseError)?;
         
-        self.run_post_request(data, uri)?;
+        let req = self.make_request::<U,T>(Method::Post, params, Some(query), Some(data))?;
+        self.run_request(req)?;
         Ok(())
     }
 
@@ -203,11 +201,10 @@ impl RestClient {
     pub fn post_capture<U, T, K>(&mut self, params: U, data: &T) -> Result<K, Error> where 
         T: serde::Serialize + RestPath<U>,
         K: serde::de::DeserializeOwned {
-        let uri = self.make_uri(T::get_path(params)?.as_str(), None)?;
-
         let data = serde_json::to_string(data).map_err(|_| Error::ParseError)?;
 
-        let body = self.run_post_request(data, uri)?;
+        let req = self.make_request::<U,T>(Method::Post, params, None, Some(data))?;
+        let body = self.run_request(req)?;
         serde_json::from_str(body.as_str()).map_err(|_| Error::ParseError)
     }
 
@@ -215,11 +212,10 @@ impl RestClient {
     pub fn post_capture_with<U, T, K>(&mut self, params: U, data: &T, query: &Query) -> Result<K, Error> where 
         T: serde::Serialize + RestPath<U>,
         K: serde::de::DeserializeOwned {
-        let uri = self.make_uri(T::get_path(params)?.as_str(), Some(query))?;
-
         let data = serde_json::to_string(data).map_err(|_| Error::ParseError)?;
 
-        let body = self.run_post_request(data, uri)?;
+        let req = self.make_request::<U,T>(Method::Post, params, Some(query), Some(data))?;
+        let body = self.run_request(req)?;
         serde_json::from_str(body.as_str()).map_err(|_| Error::ParseError)
     }
 
@@ -227,23 +223,9 @@ impl RestClient {
     pub fn delete<U, T>(&mut self, params: U) -> Result<(), Error> where
         T: RestPath<U> {
 
-        let uri = self.make_uri(T::get_path(params)?.as_str(), None)?;
-        self.run_request(Request::new(Method::Delete, uri))?;
-
+        let req = self.make_request::<U,T>(Method::Delete, params, None, None)?;
+        self.run_request(req)?;
         Ok(())
-    }
-
-    fn make_uri(&self, path: &str, params: Option<&Query>) -> Result<hyper::Uri, Error> {
-        let mut url = self.baseurl.clone();
-        url.set_path(path);
-
-        if let Some(params) = params {
-            for &(key, item) in params.iter() {
-                url.query_pairs_mut().append_pair(key, item);
-            }
-        }
-
-        url.as_str().parse::<hyper::Uri>().map_err(|_| Error::UrlError)
     }
 
     fn run_request(&mut self, mut req: hyper::Request) -> Result<String, Error> {
@@ -281,14 +263,32 @@ impl RestClient {
         }
     }
 
-    fn run_post_request(&mut self, data: String, uri: hyper::Uri) -> Result<String, Error> {
-        let mut req: Request = Request::new(Method::Post, uri);
-        req.headers_mut().set(ContentLength(data.len() as u64));
-        req.headers_mut().set(ContentType(hyper::mime::APPLICATION_JSON));
+    pub fn make_request<U, T>(&mut self, method: Method, params: U, query: Option<&Query>, body: Option<String>) -> Result<Request,Error> where
+        T: RestPath<U> {
+        let uri = self.make_uri(T::get_path(params)?.as_str(), query)?;
+        let mut req = Request::new(method, uri);
 
-        trace!("set request body: {}", data);
-        req.set_body(data);
+        if let Some(body) = body {
+            req.headers_mut().set(ContentLength(body.len() as u64));
+            req.headers_mut().set(ContentType(hyper::mime::APPLICATION_JSON));
 
-        Ok(self.run_request(req)?)
+            trace!("set request body: {}", body);
+            req.set_body(body);
+        }
+
+        Ok(req)
+    }
+
+    fn make_uri(&self, path: &str, params: Option<&Query>) -> Result<hyper::Uri, Error> {
+        let mut url = self.baseurl.clone();
+        url.set_path(path);
+
+        if let Some(params) = params {
+            for &(key, item) in params.iter() {
+                url.query_pairs_mut().append_pair(key, item);
+            }
+        }
+
+        url.as_str().parse::<hyper::Uri>().map_err(|_| Error::UrlError)
     }
 }
