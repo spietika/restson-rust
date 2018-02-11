@@ -64,6 +64,7 @@ use url::Url;
 /// would be parsed to **param1=1234&param2=abcd** in the request URL.
 pub type Query<'a> = [(&'a str, &'a str)];
 
+
 /// REST client to make HTTP GET and POST requests.
 pub struct RestClient {
     core: tokio_core::reactor::Core,
@@ -89,7 +90,7 @@ pub enum Error {
     /// Failed to make the outgoing request.
     RequestError,
 
-    /// Server returned non-OK status.
+    /// Server returned non-success status.
     HttpError(u16),
 }
 
@@ -180,9 +181,20 @@ impl RestClient {
     /// Make a POST request.
     pub fn post<U, T>(&mut self, params: U, data: &T) -> Result<(), Error> where 
         T: serde::Serialize + RestPath<U> {
+        self.post_or_put(Method::Post, params, data)
+    }
+
+    /// Make a PUT request.
+    pub fn put<U, T>(&mut self, params: U, data: &T) -> Result<(), Error> where 
+        T: serde::Serialize + RestPath<U> {
+        self.post_or_put(Method::Put, params, data)
+    }
+
+    fn post_or_put<U, T>(&mut self, method: Method, params: U, data: &T) -> Result<(), Error> where 
+        T: serde::Serialize + RestPath<U> {
         let data = serde_json::to_string(data).map_err(|_| Error::ParseError)?;
 
-        let req = self.make_request::<U,T>(Method::Post, params, None, Some(data))?;
+        let req = self.make_request::<U,T>(method, params, None, Some(data))?;
         self.run_request(req)?;
         Ok(())
     }
@@ -190,9 +202,20 @@ impl RestClient {
     /// Make POST request with query parameters.
     pub fn post_with<U, T>(&mut self, params: U, data: &T, query: &Query) -> Result<(), Error> where 
         T: serde::Serialize + RestPath<U> {
+        self.post_or_put_with(Method::Post, params, data, query)
+    }
+
+    /// Make PUT request with query parameters.
+    pub fn put_with<U, T>(&mut self, params: U, data: &T, query: &Query) -> Result<(), Error> where 
+        T: serde::Serialize + RestPath<U> {
+        self.post_or_put_with(Method::Put, params, data, query)
+    }
+
+    fn post_or_put_with<U, T>(&mut self, method: Method, params: U, data: &T, query: &Query) -> Result<(), Error> where 
+        T: serde::Serialize + RestPath<U> {
         let data = serde_json::to_string(data).map_err(|_| Error::ParseError)?;
         
-        let req = self.make_request::<U,T>(Method::Post, params, Some(query), Some(data))?;
+        let req = self.make_request::<U,T>(method, params, Some(query), Some(data))?;
         self.run_request(req)?;
         Ok(())
     }
@@ -201,9 +224,22 @@ impl RestClient {
     pub fn post_capture<U, T, K>(&mut self, params: U, data: &T) -> Result<K, Error> where 
         T: serde::Serialize + RestPath<U>,
         K: serde::de::DeserializeOwned {
+        self.post_or_put_capture(Method::Post, params, data)
+    }
+
+    /// Make a PUT request and capture returned body.
+    pub fn put_capture<U, T, K>(&mut self, params: U, data: &T) -> Result<K, Error> where 
+        T: serde::Serialize + RestPath<U>,
+        K: serde::de::DeserializeOwned {
+        self.post_or_put_capture(Method::Put, params, data)
+    }
+
+    fn post_or_put_capture<U, T, K>(&mut self, method: Method, params: U, data: &T) -> Result<K, Error> where 
+        T: serde::Serialize + RestPath<U>,
+        K: serde::de::DeserializeOwned {
         let data = serde_json::to_string(data).map_err(|_| Error::ParseError)?;
 
-        let req = self.make_request::<U,T>(Method::Post, params, None, Some(data))?;
+        let req = self.make_request::<U,T>(method, params, None, Some(data))?;
         let body = self.run_request(req)?;
         serde_json::from_str(body.as_str()).map_err(|_| Error::ParseError)
     }
@@ -212,9 +248,22 @@ impl RestClient {
     pub fn post_capture_with<U, T, K>(&mut self, params: U, data: &T, query: &Query) -> Result<K, Error> where 
         T: serde::Serialize + RestPath<U>,
         K: serde::de::DeserializeOwned {
+        self.post_or_put_capture_with(Method::Post, params, data, query)
+    }
+
+    /// Make a PUT request with query parameters and capture returned body.
+    pub fn put_capture_with<U, T, K>(&mut self, params: U, data: &T, query: &Query) -> Result<K, Error> where 
+        T: serde::Serialize + RestPath<U>,
+        K: serde::de::DeserializeOwned {
+        self.post_or_put_capture_with(Method::Put, params, data, query)
+    }
+
+    fn post_or_put_capture_with<U, T, K>(&mut self, method: Method, params: U, data: &T, query: &Query) -> Result<K, Error> where 
+        T: serde::Serialize + RestPath<U>,
+        K: serde::de::DeserializeOwned {
         let data = serde_json::to_string(data).map_err(|_| Error::ParseError)?;
 
-        let req = self.make_request::<U,T>(Method::Post, params, Some(query), Some(data))?;
+        let req = self.make_request::<U,T>(method, params, Some(query), Some(data))?;
         let body = self.run_request(req)?;
         serde_json::from_str(body.as_str()).map_err(|_| Error::ParseError)
     }

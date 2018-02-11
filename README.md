@@ -108,6 +108,10 @@ client.post((), &data).unwrap();
 ```
 In addition to the basic `post` interface, it is also possible to provide query parameters with `post_with` function. Also, `post_capture` and `post_capture_with` interfaces allow to capture and deserialize the message body returned by the server in the POST request.
 
+**PUT**
+
+HTTP PUT requests are also supported and the interface is similar to POST interface: `put`, `put_with`, `put_capture` and `put_capture_with` functions are available.
+
 **DELETE**
 
 Restson supports HTTP DELETE requests to API paths. DELETE request is sent to API URL without message body. Moreover, the response status code from server is checked, but the response body is not captured.
