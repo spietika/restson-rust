@@ -30,7 +30,7 @@ fn basic_auth_fail() {
 
     client.set_auth("username", "wrong_passwd");
     match client.get::<_, HttpBinBasicAuth>(("username", "passwd")) {
-        Err(Error::HttpError(s)) if s == 401 || s == 403 => (),
+        Err(Error::HttpError(s, _)) if s == 401 || s == 403 => (),
         _ => panic!("Expected Unauthorized/Forbidden HTTP error"), 
     };
 }

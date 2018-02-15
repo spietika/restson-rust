@@ -22,6 +22,14 @@ impl RestPath<bool> for InvalidResource {
     }
 }
 
+#[derive(Serialize,Deserialize)]
+struct HttpBinStatus {
+}
+
+impl RestPath<u16> for HttpBinStatus {
+    fn get_path(code: u16) -> Result<String,Error> { Ok(format!("status/{}", code)) }
+}
+
 
 #[test]
 fn invalid_baseurl() {
@@ -60,4 +68,17 @@ fn path_error() {
     else {
         panic!("expected url error");
     }
+}
+
+#[test]
+fn http_error() {
+    let mut client = RestClient::new("http://httpbin.org").unwrap();
+
+    match client.get::<_, HttpBinStatus>(418) {
+        Err(Error::HttpError(s, body)) => {
+            assert_eq!(s, 418);
+            assert!(!body.is_empty());
+        },
+        _ => panic!("Expected 418 error status with response body"), 
+    };
 }
