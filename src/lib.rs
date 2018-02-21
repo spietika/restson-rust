@@ -51,6 +51,8 @@ use hyper::header::*;
 use hyper_tls::HttpsConnector;
 use url::Url;
 
+static VERSION: &'static str = env!("CARGO_PKG_VERSION");
+
 /// Type for URL query parameters. 
 ///
 /// Slice of tuples in which the first field is parameter name and second is value.
@@ -277,13 +279,7 @@ impl RestClient {
         Ok(())
     }
 
-    fn run_request(&mut self, mut req: hyper::Request) -> Result<String, Error> {
-        if let Some(ref auth) = self.auth {
-            req.headers_mut().set(auth.clone());
-        };
-
-        req.headers_mut().extend(self.headers.iter());
-
+    fn run_request(&mut self, req: hyper::Request) -> Result<String, Error> {
         debug!("{} {}", req.method(), req.uri());
         trace!("{:?}", req);
 
@@ -323,6 +319,16 @@ impl RestClient {
 
             trace!("set request body: {}", body);
             req.set_body(body);
+        }
+
+        if let Some(ref auth) = self.auth {
+            req.headers_mut().set(auth.clone());
+        };
+
+        req.headers_mut().extend(self.headers.iter());
+
+        if req.headers().get::<UserAgent>().is_none() {
+            req.headers_mut().set(UserAgent::new("restson/".to_owned() + VERSION));
         }
 
         Ok(req)
