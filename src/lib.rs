@@ -46,10 +46,13 @@ extern crate log;
 
 use futures::Future;
 use futures::stream::Stream;
+use futures::future::Either;
 use hyper::{Client,Request,Method};
 use hyper::header::*;
 use hyper_tls::HttpsConnector;
 use url::Url;
+use tokio_core::reactor::Timeout;
+use std::time::Duration;
 
 static VERSION: &'static str = env!("CARGO_PKG_VERSION");
 
@@ -74,6 +77,7 @@ pub struct RestClient {
     baseurl: url::Url,
     auth: Option<Authorization<Basic>>,
     headers: Headers,
+    timeout: Duration,
 }
 
 /// Restson error return type.
@@ -94,6 +98,9 @@ pub enum Error {
 
     /// Server returned non-success status.
     HttpError(u16, String),
+
+    /// Request has timed out
+    TimeoutError,
 }
 
 /// Rest path builder trait for type.
@@ -128,6 +135,9 @@ impl RestClient {
             baseurl,
             auth: None,
             headers: Headers::new(),
+            // u64::MAX causes overflow when used with futures, u32::MAX is
+            // sufficiently large for "no timeout"
+            timeout: Duration::new(std::u32::MAX as u64, 0),
         })
     }
 
@@ -138,6 +148,11 @@ impl RestClient {
                 username: user.to_owned(),
                 password: Some(pass.to_owned())
         }));
+    }
+
+    /// Set request timeout
+    pub fn set_timeout(&mut self, timeout: Duration) {
+        self.timeout = timeout;
     }
 
     /// Set HTTP header from string name and value.
@@ -294,7 +309,14 @@ impl RestClient {
             })
         });
 
-        match self.core.run(req) {
+        let timeout = Timeout::new(self.timeout, &self.core.handle()).map_err(|_| Error::RequestError)?;
+        let work = req.select2(timeout).then(|res| match res {
+            Ok(Either::A((got, _))) => Ok(got),
+            Ok(Either::B((_, _))) => Err(Error::TimeoutError),
+            Err(_) => Err(Error::RequestError)
+        });
+
+        match self.core.run(work) {
             Ok((status, body)) => {
                 let status = *status;
                 if !status.is_success() {
@@ -304,7 +326,7 @@ impl RestClient {
                 trace!("response body: {}", body);
                 Ok(body)
             },
-            Err(_) => Err(Error::RequestError)
+            Err(e) => Err(e)
         }
     }
 
