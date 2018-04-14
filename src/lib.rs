@@ -135,9 +135,9 @@ impl RestClient {
             baseurl,
             auth: None,
             headers: Headers::new(),
-            // u64::MAX causes overflow when used with futures, u32::MAX is
-            // sufficiently large for "no timeout"
-            timeout: Duration::new(std::u32::MAX as u64, 0),
+            // For some reason using u32::MAX or u64::MAX causes request error inside
+            // tokio/hyper. Use 1 year as default which is sufficiently large for "no timeout"
+            timeout: Duration::from_secs(31556926),
         })
     }
 
