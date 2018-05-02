@@ -78,6 +78,7 @@ pub struct RestClient {
     auth: Option<Authorization<Basic>>,
     headers: Headers,
     timeout: Duration,
+    send_null_body: bool
 }
 
 /// Restson error return type.
@@ -138,7 +139,14 @@ impl RestClient {
             // For some reason using u32::MAX or u64::MAX causes request error inside
             // tokio/hyper. Use 1 year as default which is sufficiently large for "no timeout"
             timeout: Duration::from_secs(31556926),
+            send_null_body: true,
         })
+    }
+
+    /// Set whether a message body consisting only 'null' (from serde serialization)
+    /// is sent in POST/PUT
+    pub fn set_send_null_body(&mut self, send_null: bool) {
+        self.send_null_body = send_null;
     }
 
     /// Set credentials for HTTP Basic authentication.
@@ -336,11 +344,13 @@ impl RestClient {
         let mut req = Request::new(method, uri);
 
         if let Some(body) = body {
-            req.headers_mut().set(ContentLength(body.len() as u64));
-            req.headers_mut().set(ContentType(hyper::mime::APPLICATION_JSON));
+            if self.send_null_body || body != "null" {
+                req.headers_mut().set(ContentLength(body.len() as u64));
+                req.headers_mut().set(ContentType(hyper::mime::APPLICATION_JSON));
 
-            trace!("set request body: {}", body);
-            req.set_body(body);
+                trace!("set request body: {}", body);
+                req.set_body(body);
+            }
         }
 
         if let Some(ref auth) = self.auth {
