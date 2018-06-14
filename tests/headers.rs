@@ -5,7 +5,7 @@ extern crate hyper;
 extern crate serde_derive;
 
 use restson::{RestClient,RestPath,Error};
-use hyper::header::{UserAgent};
+use hyper::header::*;
 
 #[derive(Deserialize)]
 struct HttpBinAnything {
@@ -28,20 +28,10 @@ impl RestPath<()> for HttpBinAnything {
 }
 
 #[test]
-fn headers_raw() {
-    let mut client = RestClient::new("http://httpbin.org").unwrap();
-
-    client.set_header_raw("User-Agent", "restson-test");
-
-    let data: HttpBinAnything = client.get(()).unwrap();
-    assert_eq!(data.headers.user_agent, "restson-test");
-}
-
-#[test]
 fn headers() {
     let mut client = RestClient::new("http://httpbin.org").unwrap();
 
-    client.set_header(UserAgent::new("restson-test"));
+    client.set_header(USER_AGENT.as_str(), "restson-test").unwrap();
 
     let data: HttpBinAnything = client.get(()).unwrap();
     assert_eq!(data.headers.user_agent, "restson-test");
@@ -51,7 +41,7 @@ fn headers() {
 fn headers_clear() {
     let mut client = RestClient::new("http://httpbin.org").unwrap();
 
-    client.set_header_raw("X-Test", "12345");
+    client.set_header("X-Test", "12345").unwrap();
 
     let data: HttpBinAnything = client.get(()).unwrap();
     assert_eq!(data.headers.test, "12345");

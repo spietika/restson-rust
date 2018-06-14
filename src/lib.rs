@@ -43,9 +43,10 @@ extern crate serde_json;
 extern crate url;
 #[macro_use] 
 extern crate log;
+extern crate base64;
 
-use futures::Future;
-use futures::stream::Stream;
+use hyper::rt::Future;
+use hyper::rt::Stream;
 use futures::future::Either;
 use hyper::{Client,Request,Method};
 use hyper::header::*;
@@ -75,8 +76,8 @@ pub struct RestClient {
     core: tokio_core::reactor::Core,
     client: Client<HttpsConnector<hyper::client::HttpConnector>>,
     baseurl: url::Url,
-    auth: Option<Authorization<Basic>>,
-    headers: Headers,
+    auth: Option<String>,
+    headers: HeaderMap,
     timeout: Duration,
     send_null_body: bool
 }
@@ -102,6 +103,9 @@ pub enum Error {
 
     /// Request has timed out
     TimeoutError,
+
+    /// Invalid parameter value
+    InvalidValue,
 }
 
 /// Rest path builder trait for type.
@@ -122,10 +126,8 @@ impl RestClient {
     pub fn new(url: &str) -> Result<RestClient, Error> {
         let core = tokio_core::reactor::Core::new().map_err(|_| Error::HttpClientError)?;
 
-        let handle = core.handle();
-        let client = Client::configure()
-            .connector(HttpsConnector::new(4, &handle).map_err(|_| Error::HttpClientError)?)
-            .build(&handle);
+        let https = HttpsConnector::new(4).map_err(|_| Error::HttpClientError)?;
+        let client = Client::builder().build(https);
 
         let baseurl = Url::parse(url).map_err(|_| Error::UrlError)?;
 
@@ -135,10 +137,10 @@ impl RestClient {
             client,
             baseurl,
             auth: None,
-            headers: Headers::new(),
+            headers: HeaderMap::new(),
             // For some reason using u32::MAX or u64::MAX causes request error inside
             // tokio/hyper. Use 1 year as default which is sufficiently large for "no timeout"
-            timeout: Duration::from_secs(31556926),
+            timeout: Duration::from_secs(31_556_926),
             send_null_body: true,
         })
     }
@@ -150,12 +152,11 @@ impl RestClient {
     }
 
     /// Set credentials for HTTP Basic authentication.
-    pub fn set_auth(&mut self, user: &str, pass: &str) { 
-        self.auth = Some(Authorization(
-            Basic {
-                username: user.to_owned(),
-                password: Some(pass.to_owned())
-        }));
+    pub fn set_auth(&mut self, user: &str, pass: &str) {
+        let mut s: String = user.to_owned();
+        s.push_str(":");
+        s.push_str(pass);
+        self.auth = Some("Basic ".to_owned() + &base64::encode(&s));
     }
 
     /// Set request timeout
@@ -167,16 +168,10 @@ impl RestClient {
     ///
     /// The header is added to all subsequent GET and POST requests
     /// unless the headers are cleared with `clear_headers()` call.
-    pub fn set_header_raw(&mut self, name: &str, value: &str) {
-        self.headers.set_raw(name.to_owned(), value)
-    }
-
-    /// Set HTTP header from hyper Header.
-    ///
-    /// The header is added to all subsequent GET and POST requests
-    /// unless the headers are cleared with `clear_headers()` call.
-    pub fn set_header<H: Header>(&mut self, header: H) {
-        self.headers.set(header)
+    pub fn set_header(&mut self, name: &'static str, value: &str) -> Result<(), Error> {
+        let value =  HeaderValue::from_str(value).map_err(|_| Error::InvalidValue)?;
+        self.headers.insert(name, value);
+        Ok(())
     }
 
     /// Clear all previously set headers
@@ -188,7 +183,7 @@ impl RestClient {
     pub fn get<U, T>(&mut self, params: U) -> Result<T, Error> where
         T: serde::de::DeserializeOwned + RestPath<U> {
 
-        let req = self.make_request::<U,T>(Method::Get, params, None, None)?;
+        let req = self.make_request::<U,T>(Method::GET, params, None, None)?;
         let body = self.run_request(req)?;
 
         serde_json::from_str(body.as_str()).map_err(|_| Error::ParseError)
@@ -197,7 +192,7 @@ impl RestClient {
     /// Make a GET request with query parameters.
     pub fn get_with<U, T>(&mut self, params: U, query: &Query) -> Result<T, Error> where
         T: serde::de::DeserializeOwned + RestPath<U> {
-        let req = self.make_request::<U,T>(Method::Get, params, Some(query), None)?;
+        let req = self.make_request::<U,T>(Method::GET, params, Some(query), None)?;
         let body = self.run_request(req)?;
 
         serde_json::from_str(body.as_str()).map_err(|_| Error::ParseError)
@@ -206,13 +201,13 @@ impl RestClient {
     /// Make a POST request.
     pub fn post<U, T>(&mut self, params: U, data: &T) -> Result<(), Error> where 
         T: serde::Serialize + RestPath<U> {
-        self.post_or_put(Method::Post, params, data)
+        self.post_or_put(Method::POST, params, data)
     }
 
     /// Make a PUT request.
     pub fn put<U, T>(&mut self, params: U, data: &T) -> Result<(), Error> where 
         T: serde::Serialize + RestPath<U> {
-        self.post_or_put(Method::Put, params, data)
+        self.post_or_put(Method::PUT, params, data)
     }
 
     fn post_or_put<U, T>(&mut self, method: Method, params: U, data: &T) -> Result<(), Error> where 
@@ -227,13 +222,13 @@ impl RestClient {
     /// Make POST request with query parameters.
     pub fn post_with<U, T>(&mut self, params: U, data: &T, query: &Query) -> Result<(), Error> where 
         T: serde::Serialize + RestPath<U> {
-        self.post_or_put_with(Method::Post, params, data, query)
+        self.post_or_put_with(Method::POST, params, data, query)
     }
 
     /// Make PUT request with query parameters.
     pub fn put_with<U, T>(&mut self, params: U, data: &T, query: &Query) -> Result<(), Error> where 
         T: serde::Serialize + RestPath<U> {
-        self.post_or_put_with(Method::Put, params, data, query)
+        self.post_or_put_with(Method::PUT, params, data, query)
     }
 
     fn post_or_put_with<U, T>(&mut self, method: Method, params: U, data: &T, query: &Query) -> Result<(), Error> where 
@@ -249,14 +244,14 @@ impl RestClient {
     pub fn post_capture<U, T, K>(&mut self, params: U, data: &T) -> Result<K, Error> where 
         T: serde::Serialize + RestPath<U>,
         K: serde::de::DeserializeOwned {
-        self.post_or_put_capture(Method::Post, params, data)
+        self.post_or_put_capture(Method::POST, params, data)
     }
 
     /// Make a PUT request and capture returned body.
     pub fn put_capture<U, T, K>(&mut self, params: U, data: &T) -> Result<K, Error> where 
         T: serde::Serialize + RestPath<U>,
         K: serde::de::DeserializeOwned {
-        self.post_or_put_capture(Method::Put, params, data)
+        self.post_or_put_capture(Method::PUT, params, data)
     }
 
     fn post_or_put_capture<U, T, K>(&mut self, method: Method, params: U, data: &T) -> Result<K, Error> where 
@@ -273,14 +268,14 @@ impl RestClient {
     pub fn post_capture_with<U, T, K>(&mut self, params: U, data: &T, query: &Query) -> Result<K, Error> where 
         T: serde::Serialize + RestPath<U>,
         K: serde::de::DeserializeOwned {
-        self.post_or_put_capture_with(Method::Post, params, data, query)
+        self.post_or_put_capture_with(Method::POST, params, data, query)
     }
 
     /// Make a PUT request with query parameters and capture returned body.
     pub fn put_capture_with<U, T, K>(&mut self, params: U, data: &T, query: &Query) -> Result<K, Error> where 
         T: serde::Serialize + RestPath<U>,
         K: serde::de::DeserializeOwned {
-        self.post_or_put_capture_with(Method::Put, params, data, query)
+        self.post_or_put_capture_with(Method::PUT, params, data, query)
     }
 
     fn post_or_put_capture_with<U, T, K>(&mut self, method: Method, params: U, data: &T, query: &Query) -> Result<K, Error> where 
@@ -297,12 +292,12 @@ impl RestClient {
     pub fn delete<U, T>(&mut self, params: U) -> Result<(), Error> where
         T: RestPath<U> {
 
-        let req = self.make_request::<U,T>(Method::Delete, params, None, None)?;
+        let req = self.make_request::<U,T>(Method::DELETE, params, None, None)?;
         self.run_request(req)?;
         Ok(())
     }
 
-    fn run_request(&mut self, req: hyper::Request) -> Result<String, Error> {
+    fn run_request(&mut self, req: hyper::Request<hyper::Body>) -> Result<String, Error> {
         debug!("{} {}", req.method(), req.uri());
         trace!("{:?}", req);
 
@@ -310,7 +305,7 @@ impl RestClient {
             trace!("response headers: {:?}", res.headers());
 
             let status = Box::new(res.status());
-            res.body().map(|chunk| {
+            res.into_body().map(|chunk| {
                 String::from_utf8_lossy(&chunk).to_string()
             }).collect().map(|vec| {
                 (status, vec.into_iter().collect())
@@ -338,29 +333,36 @@ impl RestClient {
         }
     }
 
-    pub fn make_request<U, T>(&mut self, method: Method, params: U, query: Option<&Query>, body: Option<String>) -> Result<Request,Error> where
+    pub fn make_request<U, T>(&mut self, method: Method, params: U,
+                               query: Option<&Query>, body: Option<String>) -> Result<Request<hyper::Body>,Error> where
         T: RestPath<U> {
         let uri = self.make_uri(T::get_path(params)?.as_str(), query)?;
-        let mut req = Request::new(method, uri);
+        let mut req = Request::new(hyper::Body::empty());
+
+        *req.method_mut() = method;
+        *req.uri_mut() = uri.clone();
 
         if let Some(body) = body {
             if self.send_null_body || body != "null" {
-                req.headers_mut().set(ContentLength(body.len() as u64));
-                req.headers_mut().set(ContentType(hyper::mime::APPLICATION_JSON));
-
+                let len =  HeaderValue::from_str(&body.len().to_string()).map_err(|_| Error::RequestError)?;
+                req.headers_mut().insert(CONTENT_LENGTH, len);
+                req.headers_mut().insert(CONTENT_TYPE, HeaderValue::from_str("application/json").unwrap());
                 trace!("set request body: {}", body);
-                req.set_body(body);
+                *req.body_mut() = hyper::Body::from(body);
             }
         }
 
         if let Some(ref auth) = self.auth {
-            req.headers_mut().set(auth.clone());
+            req.headers_mut().insert(AUTHORIZATION, HeaderValue::from_str(auth).map_err(|_| Error::RequestError)?);
         };
 
-        req.headers_mut().extend(self.headers.iter());
+        for (key, value) in self.headers.iter() {
+            req.headers_mut().insert(key, value.clone());
+        }
 
-        if req.headers().get::<UserAgent>().is_none() {
-            req.headers_mut().set(UserAgent::new("restson/".to_owned() + VERSION));
+        if !req.headers().contains_key(USER_AGENT) {
+            req.headers_mut().insert(USER_AGENT,
+                HeaderValue::from_str(&("restson/".to_owned() + VERSION)).map_err(|_| Error::RequestError)?);
         }
 
         Ok(req)
