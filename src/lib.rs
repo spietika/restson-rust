@@ -210,6 +210,12 @@ impl RestClient {
         self.post_or_put(Method::PUT, params, data)
     }
 
+    /// Make a PATCH request.
+    pub fn patch<U, T>(&mut self, params: U, data: &T) -> Result<(), Error> where 
+        T: serde::Serialize + RestPath<U> {
+        self.post_or_put(Method::PATCH, params, data)
+    }
+
     fn post_or_put<U, T>(&mut self, method: Method, params: U, data: &T) -> Result<(), Error> where 
         T: serde::Serialize + RestPath<U> {
         let data = serde_json::to_string(data).map_err(|_| Error::ParseError)?;
@@ -229,6 +235,12 @@ impl RestClient {
     pub fn put_with<U, T>(&mut self, params: U, data: &T, query: &Query) -> Result<(), Error> where 
         T: serde::Serialize + RestPath<U> {
         self.post_or_put_with(Method::PUT, params, data, query)
+    }
+
+    /// Make PATCH request with query parameters.
+    pub fn patch_with<U, T>(&mut self, params: U, data: &T, query: &Query) -> Result<(), Error> where 
+        T: serde::Serialize + RestPath<U> {
+        self.post_or_put_with(Method::PATCH, params, data, query)
     }
 
     fn post_or_put_with<U, T>(&mut self, method: Method, params: U, data: &T, query: &Query) -> Result<(), Error> where 
