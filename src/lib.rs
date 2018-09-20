@@ -54,6 +54,8 @@ use hyper_tls::HttpsConnector;
 use url::Url;
 use tokio_core::reactor::Timeout;
 use std::time::Duration;
+use std::error;
+use std::fmt;
 
 static VERSION: &'static str = env!("CARGO_PKG_VERSION");
 
@@ -93,7 +95,7 @@ pub enum Error {
 
     /// Failed to deserialize data to struct (in GET) or failed to 
     /// serialize struct to JSON (in POST).
-    ParseError,
+    ParseError(serde_json::Error),
 
     /// Failed to make the outgoing request.
     RequestError,
@@ -106,6 +108,36 @@ pub enum Error {
 
     /// Invalid parameter value
     InvalidValue,
+}
+
+impl fmt::Display for Error {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        fmt.write_str(error::Error::description(self))?;
+        match *self {
+            Error::ParseError(ref err) => write!(fmt, ": {}", err),
+            _ => Ok(())
+        }
+    }
+}
+
+impl error::Error for Error {
+    fn description(&self) -> &str {
+        match *self {
+            Error::HttpClientError => "HTTP Client creation failed",
+            Error::UrlError => "Failed to parse final URL",
+            Error::ParseError(_) => "Failed to deserialze data to struct (in GET) or failed to serialize struct to JSON (in POST)",
+            Error::RequestError => "Failed to make the outgoing request",
+            Error::HttpError(_, _) => "Server returned non-success status",
+            Error::TimeoutError => "Request has timed out",
+            Error::InvalidValue => "Invalid parameter value",
+        }
+    }
+    fn cause(&self) -> Option<&error::Error> {
+        match *self {
+            Error::ParseError(ref err) => Some(err),
+            _ => None
+        }
+    }
 }
 
 /// Rest path builder trait for type.
@@ -186,7 +218,7 @@ impl RestClient {
         let req = self.make_request::<U,T>(Method::GET, params, None, None)?;
         let body = self.run_request(req)?;
 
-        serde_json::from_str(body.as_str()).map_err(|_| Error::ParseError)
+        serde_json::from_str(body.as_str()).map_err(Error::ParseError)
     }
 
     /// Make a GET request with query parameters.
@@ -195,7 +227,7 @@ impl RestClient {
         let req = self.make_request::<U,T>(Method::GET, params, Some(query), None)?;
         let body = self.run_request(req)?;
 
-        serde_json::from_str(body.as_str()).map_err(|_| Error::ParseError)
+        serde_json::from_str(body.as_str()).map_err(Error::ParseError)
     }
 
     /// Make a POST request.
@@ -218,7 +250,7 @@ impl RestClient {
 
     fn post_or_put<U, T>(&mut self, method: Method, params: U, data: &T) -> Result<(), Error> where 
         T: serde::Serialize + RestPath<U> {
-        let data = serde_json::to_string(data).map_err(|_| Error::ParseError)?;
+        let data = serde_json::to_string(data).map_err(Error::ParseError)?;
 
         let req = self.make_request::<U,T>(method, params, None, Some(data))?;
         self.run_request(req)?;
@@ -245,7 +277,7 @@ impl RestClient {
 
     fn post_or_put_with<U, T>(&mut self, method: Method, params: U, data: &T, query: &Query) -> Result<(), Error> where 
         T: serde::Serialize + RestPath<U> {
-        let data = serde_json::to_string(data).map_err(|_| Error::ParseError)?;
+        let data = serde_json::to_string(data).map_err(Error::ParseError)?;
         
         let req = self.make_request::<U,T>(method, params, Some(query), Some(data))?;
         self.run_request(req)?;
@@ -269,11 +301,11 @@ impl RestClient {
     fn post_or_put_capture<U, T, K>(&mut self, method: Method, params: U, data: &T) -> Result<K, Error> where 
         T: serde::Serialize + RestPath<U>,
         K: serde::de::DeserializeOwned {
-        let data = serde_json::to_string(data).map_err(|_| Error::ParseError)?;
+        let data = serde_json::to_string(data).map_err(Error::ParseError)?;
 
         let req = self.make_request::<U,T>(method, params, None, Some(data))?;
         let body = self.run_request(req)?;
-        serde_json::from_str(body.as_str()).map_err(|_| Error::ParseError)
+        serde_json::from_str(body.as_str()).map_err(Error::ParseError)
     }
 
     /// Make a POST request with query parameters and capture returned body.
@@ -293,11 +325,11 @@ impl RestClient {
     fn post_or_put_capture_with<U, T, K>(&mut self, method: Method, params: U, data: &T, query: &Query) -> Result<K, Error> where 
         T: serde::Serialize + RestPath<U>,
         K: serde::de::DeserializeOwned {
-        let data = serde_json::to_string(data).map_err(|_| Error::ParseError)?;
+        let data = serde_json::to_string(data).map_err(Error::ParseError)?;
 
         let req = self.make_request::<U,T>(method, params, Some(query), Some(data))?;
         let body = self.run_request(req)?;
-        serde_json::from_str(body.as_str()).map_err(|_| Error::ParseError)
+        serde_json::from_str(body.as_str()).map_err(Error::ParseError)
     }
 
     /// Make a DELETE request.
