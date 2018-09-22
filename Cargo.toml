@@ -11,7 +11,7 @@ license = "MIT"
 
 [dependencies]
 hyper = "^0.12.1"
-hyper-tls = "^0.2.0"
+hyper-tls = "^0.3.0"
 futures = "^0.1.21"
 tokio-core = "^0.1.17"
 serde = "^1.0.66"
