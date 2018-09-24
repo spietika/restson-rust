@@ -11,7 +11,7 @@ Add the following lines to your project `Cargo.toml` file:
 
 ```toml
 [dependencies]
-restson = "^0.3.0"
+restson = "^0.4.0"
 serde = "^1.0"
 serde_derive = "^1.0"
 ```
@@ -111,6 +111,10 @@ In addition to the basic `post` interface, it is also possible to provide query 
 **PUT**
 
 HTTP PUT requests are also supported and the interface is similar to POST interface: `put`, `put_with`, `put_capture` and `put_capture_with` functions are available.
+
+**PATCH**
+
+HTTP PATCH requests are also supported and the interface is similar to POST and PUT interface: `patch` and `patch_with` functions are available.
 
 **DELETE**
 
