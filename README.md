@@ -68,6 +68,13 @@ To run requests the client instance needs to be created first. The base URL of t
 let mut client = RestClient::new("http://httpbin.org").unwrap();
 ```
 
+This creates a client instance with default configuration. To configure the client, it is created with a `Builder`
+
+```rust
+let mut client = RestClient::builder().dns_workers(1)
+        .build("http://httpbin.org").unwrap();
+```
+
 **GET**
 
 The following snippet shows an example `GET` request:

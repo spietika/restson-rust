@@ -43,6 +43,16 @@ fn basic_get_http() {
 }
 
 #[test]
+fn basic_get_builder() {
+    let mut client = RestClient::builder().dns_workers(1)
+        .build("http://httpbin.org").unwrap();
+
+    let data: HttpBinAnything = client.get(()).unwrap();
+    assert_eq!(data.url, "http://httpbin.org/anything");
+}
+
+
+#[test]
 fn basic_get_https() {
     let mut client = RestClient::new("https://httpbin.org").unwrap();
 

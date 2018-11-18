@@ -110,6 +110,12 @@ pub enum Error {
     InvalidValue,
 }
 
+/// Builder for `RestClient`
+pub struct Builder {
+    /// Number of DNS worker threads
+    dns_workers: usize
+}
+
 impl fmt::Display for Error {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         fmt.write_str(error::Error::description(self))?;
@@ -140,6 +146,30 @@ impl error::Error for Error {
     }
 }
 
+impl Default for Builder {
+    fn default() -> Self {
+        Self {
+            dns_workers: 4
+        }
+    }
+}
+
+impl Builder {
+    /// Set number of DNS worker threads
+    ///
+    /// Default is 4
+    #[inline]
+    pub fn dns_workers(&mut self, workers: usize) -> &mut Self {
+        self.dns_workers = workers;
+        self
+    }
+
+    /// Create `RestClient` with the configuration in this builder
+    pub fn build(&self, url: &str) -> Result<RestClient, Error> {
+        RestClient::with_builder(url, self)
+    }
+}
+
 /// Rest path builder trait for type.
 ///
 /// Provides implementation for `rest_path` function that builds
@@ -154,11 +184,17 @@ pub trait RestPath<T> {
 
 
 impl RestClient {
-    /// Construct new client to make HTTP requests.
+    /// Construct new client with default configuration to make HTTP requests.
+    ///
+    /// Use `Builder` to configure the client.
     pub fn new(url: &str) -> Result<RestClient, Error> {
+        RestClient::with_builder(url, &RestClient::builder())
+    }
+
+    fn with_builder(url: &str, builder: &Builder) -> Result<RestClient, Error> {
         let core = tokio_core::reactor::Core::new().map_err(|_| Error::HttpClientError)?;
 
-        let https = HttpsConnector::new(4).map_err(|_| Error::HttpClientError)?;
+        let https = HttpsConnector::new(builder.dns_workers).map_err(|_| Error::HttpClientError)?;
         let client = Client::builder().build(https);
 
         let baseurl = Url::parse(url).map_err(|_| Error::UrlError)?;
@@ -175,6 +211,11 @@ impl RestClient {
             timeout: Duration::from_secs(31_556_926),
             send_null_body: true,
         })
+    }
+
+    /// Configure a client
+    pub fn builder() -> Builder {
+        Builder::default()
     }
 
     /// Set whether a message body consisting only 'null' (from serde serialization)
