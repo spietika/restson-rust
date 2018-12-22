@@ -3,9 +3,9 @@ extern crate restson;
 #[macro_use]
 extern crate serde_derive;
 
-use restson::{RestClient,RestPath,Error};
+use restson::{Error, RestClient, RestPath};
 
-#[derive(Serialize,Deserialize)]
+#[derive(Serialize, Deserialize)]
 struct HttpBinPut {
     data: String,
 }
@@ -17,14 +17,18 @@ struct HttpBinPutResp {
 }
 
 impl RestPath<()> for HttpBinPut {
-    fn get_path(_: ()) -> Result<String,Error> { Ok(String::from("put")) }
+    fn get_path(_: ()) -> Result<String, Error> {
+        Ok(String::from("put"))
+    }
 }
 
 #[test]
 fn basic_put() {
     let mut client = RestClient::new("http://httpbin.org").unwrap();
 
-    let data = HttpBinPut { data: String::from("test data")};
+    let data = HttpBinPut {
+        data: String::from("test data"),
+    };
     client.put((), &data).unwrap();
 }
 
@@ -32,8 +36,10 @@ fn basic_put() {
 fn put_query_params() {
     let mut client = RestClient::new("http://httpbin.org").unwrap();
 
-    let params = vec![("a","2"), ("b","abcd")];
-    let data = HttpBinPut { data: String::from("test data")};
+    let params = vec![("a", "2"), ("b", "abcd")];
+    let data = HttpBinPut {
+        data: String::from("test data"),
+    };
     client.put_with((), &data, &params).unwrap();
 }
 
@@ -41,7 +47,9 @@ fn put_query_params() {
 fn put_capture() {
     let mut client = RestClient::new("http://httpbin.org").unwrap();
 
-    let data = HttpBinPut { data: String::from("test data")};
+    let data = HttpBinPut {
+        data: String::from("test data"),
+    };
     let resp: HttpBinPutResp = client.put_capture((), &data).unwrap();
 
     assert_eq!(resp.json.data, "test data");
@@ -52,8 +60,10 @@ fn put_capture() {
 fn put_capture_query_params() {
     let mut client = RestClient::new("http://httpbin.org").unwrap();
 
-    let params = vec![("a","2"), ("b","abcd")];
-    let data = HttpBinPut { data: String::from("test data")};
+    let params = vec![("a", "2"), ("b", "abcd")];
+    let data = HttpBinPut {
+        data: String::from("test data"),
+    };
     let resp: HttpBinPutResp = client.put_capture_with((), &data, &params).unwrap();
 
     assert_eq!(resp.json.data, "test data");

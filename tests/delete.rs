@@ -1,12 +1,13 @@
 extern crate restson;
 
-use restson::{RestClient,RestPath,Error};
+use restson::{Error, RestClient, RestPath};
 
-struct HttpBinDelete {
-}
+struct HttpBinDelete {}
 
 impl RestPath<()> for HttpBinDelete {
-    fn get_path(_: ()) -> Result<String,Error> { Ok(String::from("delete")) }
+    fn get_path(_: ()) -> Result<String, Error> {
+        Ok(String::from("delete"))
+    }
 }
 
 #[test]

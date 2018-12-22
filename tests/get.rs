@@ -3,7 +3,7 @@ extern crate restson;
 #[macro_use]
 extern crate serde_derive;
 
-use restson::{RestClient,RestPath,Error};
+use restson::{Error, RestClient, RestPath};
 
 #[derive(Deserialize)]
 struct HttpBinAnything {
@@ -20,16 +20,20 @@ struct HttpBinAnythingArgs {
 }
 
 impl RestPath<()> for HttpBinAnything {
-    fn get_path(_: ()) -> Result<String,Error> { Ok(String::from("anything")) }
+    fn get_path(_: ()) -> Result<String, Error> {
+        Ok(String::from("anything"))
+    }
 }
 
 impl RestPath<u32> for HttpBinAnything {
-    fn get_path(param: u32) -> Result<String,Error> { Ok(format!("anything/{}", param)) }
+    fn get_path(param: u32) -> Result<String, Error> {
+        Ok(format!("anything/{}", param))
+    }
 }
 
 impl<'a> RestPath<(u32, &'a str)> for HttpBinAnything {
-    fn get_path(param: (u32, &str)) -> Result<String,Error> { 
-        let (a,b) = param;
+    fn get_path(param: (u32, &str)) -> Result<String, Error> {
+        let (a, b) = param;
         Ok(format!("anything/{}/{}", a, b))
     }
 }
@@ -44,13 +48,14 @@ fn basic_get_http() {
 
 #[test]
 fn basic_get_builder() {
-    let mut client = RestClient::builder().dns_workers(1)
-        .build("http://httpbin.org").unwrap();
+    let mut client = RestClient::builder()
+        .dns_workers(1)
+        .build("http://httpbin.org")
+        .unwrap();
 
     let data: HttpBinAnything = client.get(()).unwrap();
     assert_eq!(data.url, "http://httpbin.org/anything");
 }
-
 
 #[test]
 fn basic_get_https() {
@@ -80,7 +85,7 @@ fn get_multi_path_param() {
 fn get_query_params() {
     let mut client = RestClient::new("http://httpbin.org").unwrap();
 
-    let params = vec![("a","2"), ("b","abcd")];
+    let params = vec![("a", "2"), ("b", "abcd")];
     let data: HttpBinAnything = client.get_with((), &params).unwrap();
 
     assert_eq!(data.url, "http://httpbin.org/anything?a=2&b=abcd");

@@ -3,19 +3,20 @@ extern crate restson;
 #[macro_use]
 extern crate serde_derive;
 
-use restson::{RestClient,Error,RestPath};
+use restson::{Error, RestClient, RestPath};
 use std::time::{Duration, Instant};
 
-#[derive(Serialize,Deserialize)]
-struct InvalidResource {
-}
+#[derive(Serialize, Deserialize)]
+struct InvalidResource {}
 
 impl RestPath<()> for InvalidResource {
-    fn get_path(_: ()) -> Result<String,Error> { Ok(String::from("not_found")) }
+    fn get_path(_: ()) -> Result<String, Error> {
+        Ok(String::from("not_found"))
+    }
 }
 
 impl RestPath<bool> for InvalidResource {
-    fn get_path(param: bool) -> Result<String,Error> { 
+    fn get_path(param: bool) -> Result<String, Error> {
         if param {
             return Ok(String::from("path"));
         }
@@ -23,28 +24,29 @@ impl RestPath<bool> for InvalidResource {
     }
 }
 
-#[derive(Serialize,Deserialize)]
-struct HttpBinStatus {
-}
+#[derive(Serialize, Deserialize)]
+struct HttpBinStatus {}
 
 impl RestPath<u16> for HttpBinStatus {
-    fn get_path(code: u16) -> Result<String,Error> { Ok(format!("status/{}", code)) }
+    fn get_path(code: u16) -> Result<String, Error> {
+        Ok(format!("status/{}", code))
+    }
 }
 
-#[derive(Serialize,Deserialize)]
-struct HttpBinDelay {
-}
+#[derive(Serialize, Deserialize)]
+struct HttpBinDelay {}
 
 impl RestPath<u16> for HttpBinDelay {
-    fn get_path(delay: u16) -> Result<String,Error> { Ok(format!("delay/{}", delay)) }
+    fn get_path(delay: u16) -> Result<String, Error> {
+        Ok(format!("delay/{}", delay))
+    }
 }
-
 
 #[test]
 fn invalid_baseurl() {
     match RestClient::new("1234") {
         Err(Error::UrlError) => (),
-        _ => panic!("Expected url error")
+        _ => panic!("Expected url error"),
     };
 }
 
@@ -73,8 +75,7 @@ fn path_error() {
     let mut client = RestClient::new("http://httpbin.org").unwrap();
 
     if let Err(Error::UrlError) = client.get::<bool, InvalidResource>(false) {
-    }
-    else {
+    } else {
         panic!("expected url error");
     }
 }
@@ -87,8 +88,8 @@ fn http_error() {
         Err(Error::HttpError(s, body)) => {
             assert_eq!(s, 418);
             assert!(!body.is_empty());
-        },
-        _ => panic!("Expected 418 error status with response body"), 
+        }
+        _ => panic!("Expected 418 error status with response body"),
     };
 }
 
@@ -101,8 +102,7 @@ fn request_timeout() {
     let start = Instant::now();
     if let Err(Error::TimeoutError) = client.get::<u16, HttpBinDelay>(3) {
         assert!(start.elapsed().as_secs() == 1);
-    }
-    else {
+    } else {
         panic!("expected timeout error");
     }
 }
