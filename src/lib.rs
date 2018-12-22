@@ -211,9 +211,7 @@ impl RestClient {
             baseurl,
             auth: None,
             headers: HeaderMap::new(),
-            // For some reason using u32::MAX or u64::MAX causes request error inside
-            // tokio/hyper. Use 1 year as default which is sufficiently large for "no timeout"
-            timeout: Duration::from_secs(31_556_926),
+            timeout: Duration::from_secs(std::u64::MAX),
             send_null_body: true,
         })
     }
@@ -402,7 +400,13 @@ impl RestClient {
             })
         });
 
-        let timeout = Timeout::new(self.timeout, &self.core.handle()).map_err(|_| Error::RequestError)?;
+        let timeout: Box<Future<Item=(), Error=std::io::Error>>;
+        if self.timeout != Duration::from_secs(std::u64::MAX) {
+            timeout = Box::new(Timeout::new(self.timeout, &self.core.handle()).map_err(|_| Error::RequestError)?);
+        }
+        else {
+            timeout = Box::new(futures::empty());
+        }
         let work = req.select2(timeout).then(|res| match res {
             Ok(Either::A((got, _))) => Ok(got),
             Ok(Either::B((_, _))) => Err(Error::TimeoutError),
