@@ -115,6 +115,12 @@ pub enum Error {
 pub struct Builder {
     /// Number of DNS worker threads
     dns_workers: usize,
+
+    /// Request timeout
+    timeout: Duration,
+
+    /// Send null body
+    send_null_body: bool,
 }
 
 impl fmt::Display for Error {
@@ -154,7 +160,11 @@ impl error::Error for Error {
 
 impl Default for Builder {
     fn default() -> Self {
-        Self { dns_workers: 4 }
+        Self {
+            dns_workers: 4,
+            timeout: Duration::from_secs(std::u64::MAX),
+            send_null_body: true,
+        }
     }
 }
 
@@ -165,6 +175,24 @@ impl Builder {
     #[inline]
     pub fn dns_workers(&mut self, workers: usize) -> &mut Self {
         self.dns_workers = workers;
+        self
+    }
+
+    /// Set request timeout
+    ///
+    /// Default is no timeout
+    #[inline]
+    pub fn timeout(&mut self, timeout: Duration) -> &mut Self {
+        self.timeout = timeout;
+        self
+    }
+
+    /// Send null body in POST/PUT
+    ///
+    /// Default is yes
+    #[inline]
+    pub fn send_null_body(&mut self, value: bool) -> &mut Self {
+        self.send_null_body = value;
         self
     }
 
@@ -209,8 +237,8 @@ impl RestClient {
             baseurl,
             auth: None,
             headers: HeaderMap::new(),
-            timeout: Duration::from_secs(std::u64::MAX),
-            send_null_body: true,
+            timeout: builder.timeout,
+            send_null_body: builder.send_null_body,
         })
     }
 

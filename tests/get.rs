@@ -4,6 +4,7 @@ extern crate restson;
 extern crate serde_derive;
 
 use restson::{Error, RestClient, RestPath};
+use std::time::Duration;
 
 #[derive(Deserialize)]
 struct HttpBinAnything {
@@ -50,6 +51,8 @@ fn basic_get_http() {
 fn basic_get_builder() {
     let mut client = RestClient::builder()
         .dns_workers(1)
+        .timeout(Duration::from_secs(10))
+        .send_null_body(false)
         .build("http://httpbin.org")
         .unwrap();
 
