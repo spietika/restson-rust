@@ -42,6 +42,15 @@ impl RestPath<u16> for HttpBinDelay {
     }
 }
 
+#[derive(Serialize, Deserialize)]
+struct HttpBinBase64 {}
+
+impl RestPath<String> for HttpBinBase64 {
+    fn get_path(data: String) -> Result<String, Error> {
+        Ok(format!("base64/{}", data))
+    }
+}
+
 #[test]
 fn invalid_baseurl() {
     match RestClient::new("1234") {
@@ -104,5 +113,20 @@ fn request_timeout() {
         assert!(start.elapsed().as_secs() == 1);
     } else {
         panic!("expected timeout error");
+    }
+}
+
+#[test]
+fn deserialize_error() {
+    let mut client = RestClient::new("http://httpbin.org").unwrap();
+
+    // Service returns decoded base64 in body which should be string 'test'.
+    // This fails JSON deserialization and is returned in the Error
+    if let Err(Error::DeserializeParseError(_, data)) =
+        client.get::<String, HttpBinBase64>("dGVzdA==".to_string())
+    {
+        assert!(data == "test");
+    } else {
+        panic!("expected serialized error");
     }
 }
