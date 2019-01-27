@@ -470,7 +470,7 @@ impl RestClient {
         Ok(())
     }
 
-    fn run_request(&mut self, req: hyper::Request<hyper::Body>) -> Result<String, Error> {
+    pub fn run_request(&mut self, req: hyper::Request<hyper::Body>) -> Result<String, Error> {
         debug!("{} {}", req.method(), req.uri());
         trace!("{:?}", req);
 
