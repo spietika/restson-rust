@@ -470,6 +470,17 @@ impl RestClient {
         Ok(())
     }
 
+    /// Make a DELETE request with query and body.
+    pub fn delete_with<U, T>(&mut self, params: U, data: &T, query: &Query) -> Result<(), Error>
+    where
+        T: serde::Serialize + RestPath<U>,
+    {
+        let data = serde_json::to_string(data).map_err(Error::SerializeParseError)?;
+        let req = self.make_request::<U, T>(Method::DELETE, params, Some(query), Some(data))?;
+        self.run_request(req)?;
+        Ok(())
+    }
+
     fn run_request(&mut self, req: hyper::Request<hyper::Body>) -> Result<String, Error> {
         debug!("{} {}", req.method(), req.uri());
         trace!("{:?}", req);
