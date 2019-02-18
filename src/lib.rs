@@ -523,7 +523,7 @@ impl RestClient {
         }
     }
 
-    pub fn make_request<U, T>(
+    fn make_request<U, T>(
         &mut self,
         method: Method,
         params: U,
