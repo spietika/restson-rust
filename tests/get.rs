@@ -41,10 +41,10 @@ impl<'a> RestPath<(u32, &'a str)> for HttpBinAnything {
 
 #[test]
 fn basic_get_http() {
-    let mut client = RestClient::new("http://httpbin.org").unwrap();
+    let mut client = RestClient::new("https://httpbin.org").unwrap();
 
     let data: HttpBinAnything = client.get(()).unwrap();
-    assert_eq!(data.url, "http://httpbin.org/anything");
+    assert_eq!(data.url, "https://httpbin.org/anything");
 }
 
 #[test]
@@ -53,11 +53,11 @@ fn basic_get_builder() {
         .dns_workers(1)
         .timeout(Duration::from_secs(10))
         .send_null_body(false)
-        .build("http://httpbin.org")
+        .build("https://httpbin.org")
         .unwrap();
 
     let data: HttpBinAnything = client.get(()).unwrap();
-    assert_eq!(data.url, "http://httpbin.org/anything");
+    assert_eq!(data.url, "https://httpbin.org/anything");
 }
 
 #[test]
@@ -70,28 +70,28 @@ fn basic_get_https() {
 
 #[test]
 fn get_path_param() {
-    let mut client = RestClient::new("http://httpbin.org").unwrap();
+    let mut client = RestClient::new("https://httpbin.org").unwrap();
 
     let data: HttpBinAnything = client.get(1234).unwrap();
-    assert_eq!(data.url, "http://httpbin.org/anything/1234");
+    assert_eq!(data.url, "https://httpbin.org/anything/1234");
 }
 
 #[test]
 fn get_multi_path_param() {
-    let mut client = RestClient::new("http://httpbin.org").unwrap();
+    let mut client = RestClient::new("https://httpbin.org").unwrap();
 
     let data: HttpBinAnything = client.get((1234, "abcd")).unwrap();
-    assert_eq!(data.url, "http://httpbin.org/anything/1234/abcd");
+    assert_eq!(data.url, "https://httpbin.org/anything/1234/abcd");
 }
 
 #[test]
 fn get_query_params() {
-    let mut client = RestClient::new("http://httpbin.org").unwrap();
+    let mut client = RestClient::new("https://httpbin.org").unwrap();
 
     let params = vec![("a", "2"), ("b", "abcd")];
     let data: HttpBinAnything = client.get_with((), &params).unwrap();
 
-    assert_eq!(data.url, "http://httpbin.org/anything?a=2&b=abcd");
+    assert_eq!(data.url, "https://httpbin.org/anything?a=2&b=abcd");
     assert_eq!(data.args.a, "2");
     assert_eq!(data.args.b, "abcd");
 }

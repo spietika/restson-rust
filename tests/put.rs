@@ -24,7 +24,7 @@ impl RestPath<()> for HttpBinPut {
 
 #[test]
 fn basic_put() {
-    let mut client = RestClient::new("http://httpbin.org").unwrap();
+    let mut client = RestClient::new("https://httpbin.org").unwrap();
 
     let data = HttpBinPut {
         data: String::from("test data"),
@@ -34,7 +34,7 @@ fn basic_put() {
 
 #[test]
 fn put_query_params() {
-    let mut client = RestClient::new("http://httpbin.org").unwrap();
+    let mut client = RestClient::new("https://httpbin.org").unwrap();
 
     let params = vec![("a", "2"), ("b", "abcd")];
     let data = HttpBinPut {
@@ -45,7 +45,7 @@ fn put_query_params() {
 
 #[test]
 fn put_capture() {
-    let mut client = RestClient::new("http://httpbin.org").unwrap();
+    let mut client = RestClient::new("https://httpbin.org").unwrap();
 
     let data = HttpBinPut {
         data: String::from("test data"),
@@ -53,12 +53,12 @@ fn put_capture() {
     let resp: HttpBinPutResp = client.put_capture((), &data).unwrap();
 
     assert_eq!(resp.json.data, "test data");
-    assert_eq!(resp.url, "http://httpbin.org/put");
+    assert_eq!(resp.url, "https://httpbin.org/put");
 }
 
 #[test]
 fn put_capture_query_params() {
-    let mut client = RestClient::new("http://httpbin.org").unwrap();
+    let mut client = RestClient::new("https://httpbin.org").unwrap();
 
     let params = vec![("a", "2"), ("b", "abcd")];
     let data = HttpBinPut {
@@ -67,5 +67,5 @@ fn put_capture_query_params() {
     let resp: HttpBinPutResp = client.put_capture_with((), &data, &params).unwrap();
 
     assert_eq!(resp.json.data, "test data");
-    assert_eq!(resp.url, "http://httpbin.org/put?a=2&b=abcd");
+    assert_eq!(resp.url, "https://httpbin.org/put?a=2&b=abcd");
 }
