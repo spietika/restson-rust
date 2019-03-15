@@ -101,6 +101,12 @@ pub enum Error {
     /// Failed to make the outgoing request.
     RequestError,
 
+    /// Failed to perform HTTP call using Hyper
+    HyperError(hyper::Error),
+
+    /// Failed to perform IO operation
+    IoError(std::io::Error),
+
     /// Server returned non-success status.
     HttpError(u16, String),
 
@@ -144,6 +150,8 @@ impl error::Error for Error {
                 "Failed to deserialize data to struct (in GET or POST)"
             }
             Error::RequestError => "Failed to make the outgoing request",
+            Error::HyperError(_) => "Failed to make the outgoing request due to Hyper error",
+            Error::IoError(_) => "Failed to make the outgoing request due to IO error",
             Error::HttpError(_, _) => "Server returned non-success status",
             Error::TimeoutError => "Request has timed out",
             Error::InvalidValue => "Invalid parameter value",
@@ -503,10 +511,23 @@ impl RestClient {
         } else {
             timeout = Box::new(futures::empty());
         }
-        let work = req.select2(timeout).then(|res| match res {
-            Ok(Either::A((got, _))) => Ok(got),
-            Ok(Either::B((_, _))) => Err(Error::TimeoutError),
-            Err(_) => Err(Error::RequestError),
+        let work = req.select2(timeout).then(|res| {
+            match res {
+                Ok(Either::A((got, _))) => Ok(got),
+                Ok(Either::B((_, _))) => Err(Error::TimeoutError),
+                Err(err) => {
+                    match err {
+                        Either::A((err, _future)) => {
+                            error!("{:?}", err);
+                            Err(Error::HyperError(err))
+                        },
+                        Either::B((err, _future)) => {
+                            error!("{:?}", err);
+                            Err(Error::IoError(err))
+                        },
+                    }
+                },
+            }
         });
 
         match self.core.run(work) {
