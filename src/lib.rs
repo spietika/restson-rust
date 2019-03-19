@@ -181,7 +181,7 @@ impl Builder {
     ///
     /// Default is 4
     #[inline]
-    pub fn dns_workers(&mut self, workers: usize) -> &mut Self {
+    pub fn dns_workers(mut self, workers: usize) -> Self {
         self.dns_workers = workers;
         self
     }
@@ -190,7 +190,7 @@ impl Builder {
     ///
     /// Default is no timeout
     #[inline]
-    pub fn timeout(&mut self, timeout: Duration) -> &mut Self {
+    pub fn timeout(mut self, timeout: Duration) -> Self {
         self.timeout = timeout;
         self
     }
@@ -199,13 +199,13 @@ impl Builder {
     ///
     /// Default is yes
     #[inline]
-    pub fn send_null_body(&mut self, value: bool) -> &mut Self {
+    pub fn send_null_body(mut self, value: bool) -> Self {
         self.send_null_body = value;
         self
     }
 
     /// Create `RestClient` with the configuration in this builder
-    pub fn build(&self, url: &str) -> Result<RestClient, Error> {
+    pub fn build(self, url: &str) -> Result<RestClient, Error> {
         RestClient::with_builder(url, self)
     }
 }
@@ -227,10 +227,10 @@ impl RestClient {
     ///
     /// Use `Builder` to configure the client.
     pub fn new(url: &str) -> Result<RestClient, Error> {
-        RestClient::with_builder(url, &RestClient::builder())
+        RestClient::with_builder(url, RestClient::builder())
     }
 
-    fn with_builder(url: &str, builder: &Builder) -> Result<RestClient, Error> {
+    fn with_builder(url: &str, builder: Builder) -> Result<RestClient, Error> {
         let core = tokio_core::reactor::Core::new().map_err(|_| Error::HttpClientError)?;
 
         let https = HttpsConnector::new(builder.dns_workers).map_err(|_| Error::HttpClientError)?;
