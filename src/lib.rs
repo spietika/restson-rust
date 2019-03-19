@@ -129,6 +129,9 @@ pub struct Builder {
 
     /// Send null body
     send_null_body: bool,
+
+    /// Hyper client to use for the connection
+    client: Option<HyperClient>,
 }
 
 impl fmt::Display for Error {
@@ -174,6 +177,7 @@ impl Default for Builder {
             dns_workers: 4,
             timeout: Duration::from_secs(std::u64::MAX),
             send_null_body: true,
+            client: None,
         }
     }
 }
@@ -206,6 +210,11 @@ impl Builder {
         self
     }
 
+    pub fn with_client(mut self, client: HyperClient) -> Self {
+        self.client = Some(client);
+        self
+    }
+
     /// Create `RestClient` with the configuration in this builder
     pub fn build(self, url: &str) -> Result<RestClient, Error> {
         RestClient::with_builder(url, self)
@@ -235,8 +244,14 @@ impl RestClient {
     fn with_builder(url: &str, builder: Builder) -> Result<RestClient, Error> {
         let core = tokio_core::reactor::Core::new().map_err(|_| Error::HttpClientError)?;
 
-        let https = HttpsConnector::new(builder.dns_workers).map_err(|_| Error::HttpClientError)?;
-        let client = Client::builder().build(https);
+        let client = match builder.client {
+            Some(client) => client,
+            None => {
+                let https =
+                    HttpsConnector::new(builder.dns_workers).map_err(|_| Error::HttpClientError)?;
+                Client::builder().build(https)
+            }
+        };
 
         let baseurl = Url::parse(url).map_err(|_| Error::UrlError)?;
 
@@ -513,23 +528,19 @@ impl RestClient {
         } else {
             timeout = Box::new(futures::empty());
         }
-        let work = req.select2(timeout).then(|res| {
-            match res {
-                Ok(Either::A((got, _))) => Ok(got),
-                Ok(Either::B((_, _))) => Err(Error::TimeoutError),
-                Err(err) => {
-                    match err {
-                        Either::A((err, _future)) => {
-                            error!("{:?}", err);
-                            Err(Error::HyperError(err))
-                        },
-                        Either::B((err, _future)) => {
-                            error!("{:?}", err);
-                            Err(Error::IoError(err))
-                        },
-                    }
-                },
-            }
+        let work = req.select2(timeout).then(|res| match res {
+            Ok(Either::A((got, _))) => Ok(got),
+            Ok(Either::B((_, _))) => Err(Error::TimeoutError),
+            Err(err) => match err {
+                Either::A((err, _future)) => {
+                    error!("{:?}", err);
+                    Err(Error::HyperError(err))
+                }
+                Either::B((err, _future)) => {
+                    error!("{:?}", err);
+                    Err(Error::IoError(err))
+                }
+            },
         });
 
         match self.core.run(work) {
