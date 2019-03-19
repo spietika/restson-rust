@@ -72,10 +72,12 @@ static VERSION: &'static str = env!("CARGO_PKG_VERSION");
 /// would be parsed to **param1=1234&param2=abcd** in the request URL.
 pub type Query<'a> = [(&'a str, &'a str)];
 
+pub type HyperClient = Client<HttpsConnector<hyper::client::HttpConnector>>;
+
 /// REST client to make HTTP GET and POST requests.
 pub struct RestClient {
     core: tokio_core::reactor::Core,
-    client: Client<HttpsConnector<hyper::client::HttpConnector>>,
+    client: HyperClient,
     baseurl: url::Url,
     auth: Option<String>,
     headers: HeaderMap,
