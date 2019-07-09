@@ -81,6 +81,7 @@ pub struct RestClient {
     baseurl: url::Url,
     auth: Option<String>,
     headers: HeaderMap,
+    response_headers: HeaderMap,
     timeout: Duration,
     send_null_body: bool,
 }
@@ -262,6 +263,7 @@ impl RestClient {
             baseurl,
             auth: None,
             headers: HeaderMap::new(),
+            response_headers: HeaderMap::new(),
             timeout: builder.timeout,
             send_null_body: builder.send_null_body,
         })
@@ -304,6 +306,11 @@ impl RestClient {
     /// Clear all previously set headers
     pub fn clear_headers(&mut self) {
         self.headers.clear();
+    }
+
+    /// Response headers captured from previous request
+    pub fn response_headers(&mut self) -> &HeaderMap {
+        &self.response_headers
     }
 
     /// Make a GET request.
@@ -511,13 +518,12 @@ impl RestClient {
         trace!("{:?}", req);
 
         let req = self.client.request(req).and_then(|res| {
-            trace!("response headers: {:?}", res.headers());
-
+            let headers = Box::new(res.headers().clone());
             let status = Box::new(res.status());
             res.into_body()
                 .map(|chunk| String::from_utf8_lossy(&chunk).to_string())
                 .collect()
-                .map(|vec| (status, vec.into_iter().collect()))
+                .map(|vec| (status, headers, vec.into_iter().collect()))
         });
 
         let timeout: Box<Future<Item = (), Error = std::io::Error>>;
@@ -544,13 +550,15 @@ impl RestClient {
         });
 
         match self.core.run(work) {
-            Ok((status, body)) => {
+            Ok((status, headers, body)) => {
                 let status = *status;
                 if !status.is_success() {
                     error!("server returned \"{}\" error", status);
                     return Err(Error::HttpError(status.as_u16(), body));
                 }
+                trace!("response headers: {:?}", headers);
                 trace!("response body: {}", body);
+                self.response_headers = *headers;
                 Ok(body)
             }
             Err(e) => Err(e),

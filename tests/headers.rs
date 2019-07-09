@@ -66,3 +66,11 @@ fn default_user_agent() {
         "restson/".to_owned() + env!("CARGO_PKG_VERSION")
     );
 }
+
+#[test]
+fn response_headers() {
+    let mut client = RestClient::new("http://httpbin.org").unwrap();
+
+    let _data: HttpBinAnything = client.get(()).unwrap();
+    assert_eq!(client.response_headers()["content-type"], "application/json");
+}
