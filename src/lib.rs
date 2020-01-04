@@ -163,7 +163,7 @@ impl error::Error for Error {
             Error::InvalidValue => "Invalid parameter value",
         }
     }
-    fn cause(&self) -> Option<&error::Error> {
+    fn cause(&self) -> Option<&dyn error::Error> {
         match *self {
             Error::SerializeParseError(ref err) => Some(err),
             Error::DeserializeParseError(ref err, _) => Some(err),
@@ -526,7 +526,7 @@ impl RestClient {
                 .map(|vec| (status, headers, vec.into_iter().collect()))
         });
 
-        let timeout: Box<Future<Item = (), Error = std::io::Error>>;
+        let timeout: Box<dyn Future<Item = (), Error = std::io::Error>>;
         if self.timeout != Duration::from_secs(std::u64::MAX) {
             timeout = Box::new(
                 Timeout::new(self.timeout, &self.core.handle()).map_err(|_| Error::RequestError)?,
