@@ -39,22 +39,19 @@ extern crate hyper;
 extern crate hyper_tls;
 extern crate serde;
 extern crate serde_json;
-extern crate tokio_core;
+extern crate tokio;
 extern crate url;
 #[macro_use]
 extern crate log;
 extern crate base64;
 
-use futures::future::Either;
+use tokio::time::timeout;
 use hyper::header::*;
-use hyper::rt::Future;
-use hyper::rt::Stream;
+use hyper::body::Buf;
 use hyper::{Client, Method, Request};
 use hyper_tls::HttpsConnector;
-use std::error;
-use std::fmt;
+use std::{error, fmt};
 use std::time::Duration;
-use tokio_core::reactor::Timeout;
 use url::Url;
 
 static VERSION: &'static str = env!("CARGO_PKG_VERSION");
@@ -76,7 +73,6 @@ pub type HyperClient = Client<HttpsConnector<hyper::client::HttpConnector>>;
 
 /// REST client to make HTTP GET and POST requests.
 pub struct RestClient {
-    core: tokio_core::reactor::Core,
     client: HyperClient,
     baseurl: url::Url,
     auth: Option<String>,
@@ -122,9 +118,6 @@ pub enum Error {
 
 /// Builder for `RestClient`
 pub struct Builder {
-    /// Number of DNS worker threads
-    dns_workers: usize,
-
     /// Request timeout
     timeout: Duration,
 
@@ -172,10 +165,21 @@ impl error::Error for Error {
     }
 }
 
+impl std::convert::From<hyper::Error> for Error {
+    fn from(e: hyper::Error) -> Self {
+        Error::HyperError(e)
+    }
+}
+
+impl std::convert::From<tokio::time::Elapsed> for Error {
+    fn from(_e: tokio::time::Elapsed) -> Self {
+        Error::TimeoutError
+    }
+}
+
 impl Default for Builder {
     fn default() -> Self {
         Self {
-            dns_workers: 4,
             timeout: Duration::from_secs(std::u64::MAX),
             send_null_body: true,
             client: None,
@@ -184,15 +188,6 @@ impl Default for Builder {
 }
 
 impl Builder {
-    /// Set number of DNS worker threads
-    ///
-    /// Default is 4
-    #[inline]
-    pub fn dns_workers(mut self, workers: usize) -> Self {
-        self.dns_workers = workers;
-        self
-    }
-
     /// Set request timeout
     ///
     /// Default is no timeout
@@ -243,14 +238,10 @@ impl RestClient {
     }
 
     fn with_builder(url: &str, builder: Builder) -> Result<RestClient, Error> {
-        let core = tokio_core::reactor::Core::new().map_err(|_| Error::HttpClientError)?;
-
         let client = match builder.client {
             Some(client) => client,
             None => {
-                let https =
-                    HttpsConnector::new(builder.dns_workers).map_err(|_| Error::HttpClientError)?;
-                Client::builder().build(https)
+                Client::builder().build(HttpsConnector::new())
             }
         };
 
@@ -258,7 +249,6 @@ impl RestClient {
 
         debug!("new client for {}", baseurl);
         Ok(RestClient {
-            core,
             client,
             baseurl,
             auth: None,
@@ -513,56 +503,41 @@ impl RestClient {
         Ok(())
     }
 
-    fn run_request(&mut self, req: hyper::Request<hyper::Body>) -> Result<String, Error> {
+    #[tokio::main]
+    async fn run_request(&mut self, req: hyper::Request<hyper::Body>) -> Result<String, Error> {
         debug!("{} {}", req.method(), req.uri());
         trace!("{:?}", req);
 
-        let req = self.client.request(req).and_then(|res| {
-            let headers = Box::new(res.headers().clone());
-            let status = Box::new(res.status());
-            res.into_body()
-                .map(|chunk| String::from_utf8_lossy(&chunk).to_string())
-                .collect()
-                .map(|vec| (status, headers, vec.into_iter().collect()))
-        });
+        let duration = self.timeout.clone();
+        let work = async {
+            let res = self.client.request(req).await?;
 
-        let timeout: Box<dyn Future<Item = (), Error = std::io::Error>>;
-        if self.timeout != Duration::from_secs(std::u64::MAX) {
-            timeout = Box::new(
-                Timeout::new(self.timeout, &self.core.handle()).map_err(|_| Error::RequestError)?,
-            );
+            self.response_headers = res.headers().clone();
+            let status = res.status();
+            let body = hyper::body::aggregate(res).await?.to_bytes();
+
+            let body = String::from_utf8_lossy(&body);
+
+            Ok::<_, hyper::Error>((body.to_string(), status))
+        };
+
+        let res;
+        if duration != Duration::from_secs(std::u64::MAX) {
+            res = timeout(duration, work).await??;
         } else {
-            timeout = Box::new(futures::empty());
+            res = work.await?;
         }
-        let work = req.select2(timeout).then(|res| match res {
-            Ok(Either::A((got, _))) => Ok(got),
-            Ok(Either::B((_, _))) => Err(Error::TimeoutError),
-            Err(err) => match err {
-                Either::A((err, _future)) => {
-                    error!("{:?}", err);
-                    Err(Error::HyperError(err))
-                }
-                Either::B((err, _future)) => {
-                    error!("{:?}", err);
-                    Err(Error::IoError(err))
-                }
-            },
-        });
 
-        match self.core.run(work) {
-            Ok((status, headers, body)) => {
-                let status = *status;
-                if !status.is_success() {
-                    error!("server returned \"{}\" error", status);
-                    return Err(Error::HttpError(status.as_u16(), body));
-                }
-                trace!("response headers: {:?}", headers);
-                trace!("response body: {}", body);
-                self.response_headers = *headers;
-                Ok(body)
-            }
-            Err(e) => Err(e),
+        let (body, status) = res;
+
+        if !status.is_success() {
+            error!("server returned \"{}\" error", status);
+            return Err(Error::HttpError(status.as_u16(), body.to_string()));
         }
+
+        trace!("response headers: {:?}", self.response_headers);
+        trace!("response body: {}", body);
+        Ok(body)
     }
 
     fn make_request<U, T>(

@@ -42,7 +42,6 @@ impl<'a> RestPath<(u32, &'a str)> for HttpBinAnything {
 #[test]
 fn basic_get_builder() {
     let mut client = RestClient::builder()
-        .dns_workers(1)
         .timeout(Duration::from_secs(10))
         .send_null_body(false)
         .build("https://httpbin.org")
