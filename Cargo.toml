@@ -1,6 +1,6 @@
 [package]
 name = "restson"
-version = "0.5.4"
+version = "0.6.0"
 authors = ["Sami Pietikäinen"]
 description = "Easy-to-use REST client with automatic serialization and deserialization."
 repository = "https://github.com/spietika/restson-rust"
