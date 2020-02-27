@@ -11,7 +11,7 @@ Add the following lines to your project `Cargo.toml` file:
 
 ```toml
 [dependencies]
-restson = "^0.5"
+restson = "^0.6"
 serde = "^1.0"
 serde_derive = "^1.0"
 ```
@@ -154,30 +154,25 @@ In all of the examples above the JSON structure consists of key-value pairs that
 ["a","b","c"]
 ```
 
-It is possible to work with APIs returning arrays in Restson. However instead of a struct, the user type needs to be a container. `Vec<String>` in this case. The type also needs to implement the `RestPath` trait as explained before, and easiest way to do so is to wrap the container in `enum`.
+It is possible to work with APIs returning arrays in Restson. However instead of a struct, the user type needs to be a container. `Vec<String>` in this case. The type also needs to implement the `RestPath` trait as explained before, and easiest way to do so is to wrap the container in a `struct`.
 
 ```rust
-#[macro_use]
-extern crate serde_derive;
-extern crate serde;
+#[derive(Serialize,Deserialize,Debug,Clone)]
+struct Products ( pub Vec<Product> );
 
-extern crate restson;
-use restson::{RestClient,RestPath,Error};
-
-#[derive(Deserialize,Debug)]
-#[serde(untagged)]
-enum MyData {
-    Array(Vec<String>)
+#[derive(Serialize,Deserialize,Debug,Clone)]
+pub struct Product {
+    pub name: String,
+    //...
 }
 
-impl RestPath<()> for MyData {
-    fn get_path(_: ()) -> Result<String,Error> { Ok(String::from("array")) }
+impl RestPath<()> for Products {
+    fn get_path(_: ()) -> Result<String,Error> { Ok(String::from("/api/objects/products"))}
 }
 
-fn main() {
+pub fn products(&self) -> Vec<Product> {
     let mut client = RestClient::new("http://localhost:8080").unwrap();
-    let data: MyData = client.get(()).unwrap();
-    println!("{:?}", data);
+    client.get::<_, Products>(()).unwrap().0
 }
 ```
 
