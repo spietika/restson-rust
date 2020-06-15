@@ -593,8 +593,9 @@ impl RestClient {
     }
 
     fn make_uri(&self, path: &str, params: Option<&Query>) -> Result<hyper::Uri, Error> {
-        let mut url = self.baseurl.clone();
-        url.set_path(path);
+        let mut url = self.baseurl.clone()
+            .join(path)
+            .map_err(|_| Error::UrlError)?;
 
         if let Some(params) = params {
             for &(key, item) in params.iter() {
