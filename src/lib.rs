@@ -34,22 +34,12 @@
 //! }
 //! ```
 
-extern crate futures;
-extern crate hyper;
-extern crate hyper_tls;
-extern crate serde;
-extern crate serde_json;
-extern crate tokio;
-extern crate url;
-#[macro_use]
-extern crate log;
-extern crate base64;
-
 use tokio::time::timeout;
 use hyper::header::*;
 use hyper::body::Buf;
 use hyper::{Client, Method, Request};
 use hyper_tls::HttpsConnector;
+use log::{debug, trace, error};
 use std::{error, fmt};
 use std::time::Duration;
 use url::Url;

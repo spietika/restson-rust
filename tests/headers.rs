@@ -1,11 +1,6 @@
-extern crate hyper;
-extern crate restson;
-
-#[macro_use]
-extern crate serde_derive;
-
 use hyper::header::*;
 use restson::{Error, RestClient, RestPath};
+use serde_derive::Deserialize;
 
 #[derive(Deserialize)]
 struct HttpBinAnything {
