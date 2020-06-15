@@ -1,9 +1,5 @@
-extern crate restson;
-
-#[macro_use]
-extern crate serde_derive;
-
 use restson::{Error, RestClient, RestPath};
+use serde_derive::Deserialize;
 
 #[derive(Deserialize)]
 struct HttpBinBasicAuth {}
