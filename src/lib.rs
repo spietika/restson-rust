@@ -80,6 +80,7 @@ pub struct RestClient {
     response_headers: HeaderMap,
     timeout: Duration,
     send_null_body: bool,
+    body_wash_fn: fn(String) -> String,
 }
 
 /// Restson error return type.
@@ -256,6 +257,7 @@ impl RestClient {
             response_headers: HeaderMap::new(),
             timeout: builder.timeout,
             send_null_body: builder.send_null_body,
+            body_wash_fn: std::convert::identity,
         })
     }
 
@@ -276,6 +278,11 @@ impl RestClient {
         s.push_str(":");
         s.push_str(pass);
         self.auth = Some("Basic ".to_owned() + &base64::encode(&s));
+    }
+
+    /// Set a function that cleans the response body up before deserializing it.
+    pub fn set_body_wash_fn(&mut self, func: fn(String) -> String) {
+        self.body_wash_fn = func;
     }
 
     /// Set request timeout
@@ -537,7 +544,7 @@ impl RestClient {
 
         trace!("response headers: {:?}", self.response_headers);
         trace!("response body: {}", body);
-        Ok(body)
+        Ok((self.body_wash_fn)(body))
     }
 
     fn make_request<U, T>(
