@@ -176,6 +176,14 @@ pub fn products(&self) -> Vec<Product> {
 }
 ```
 
+### Relative paths
+
+It is possible to use relative paths in the base URL to avoid having to return version or other prefix from the `get_path()` implementation. For instance, endpoint `http://localhost:8080/api/v1/ep` could be handled by setting `http://localhost:8080/api/v1/` as base URL and returning `ep` from the `get_path()`. Note: the trailing slash in the base URL is significant! Without it, the last element is replaced instead of appended when the elements are joined (see [here](https://docs.rs/url/2.1.1/url/struct.Url.html#method.join) for more information).
+
+### Body wash
+
+For some APIs it is necessary to remove magic values or otherwise clean/process the returned response before it is deserialized. It is possible to provide a custom processing function with `set_body_wash_fn()` which is called with the raw returned body before passing it to the deserialization step. 
+
 ### Logging
 The library uses the `log` crate to provide debug and trace logs. These logs allow to easily see both outgoing requests as well as incoming responses from the server. See the [log crate documentation](https://docs.rs/log/*/log/) for details.
 
