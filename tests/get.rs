@@ -13,6 +13,11 @@ struct HttpBinAnything {
 }
 
 #[derive(Deserialize)]
+struct HttpRelativePath {
+    url: String,
+}
+
+#[derive(Deserialize)]
 struct HttpBinAnythingArgs {
     #[serde(default)]
     a: String,
@@ -36,6 +41,12 @@ impl<'a> RestPath<(u32, &'a str)> for HttpBinAnything {
     fn get_path(param: (u32, &str)) -> Result<String, Error> {
         let (a, b) = param;
         Ok(format!("anything/{}/{}", a, b))
+    }
+}
+
+impl RestPath<()> for HttpRelativePath {
+    fn get_path(_: ()) -> Result<String, Error> {
+        Ok(String::from("test"))
     }
 }
 
@@ -85,4 +96,15 @@ fn get_query_params() {
     assert_eq!(data.url, "https://httpbin.org/anything?a=2&b=abcd");
     assert_eq!(data.args.a, "2");
     assert_eq!(data.args.b, "abcd");
+}
+
+#[test]
+fn relative_path() {
+    // When using relative paths, the base path should end with '/'. Otherwise
+    // the Url crate join() will replace the last element instead of appending
+    // the path returned from get_path().
+    let mut client = RestClient::new("https://httpbin.org/anything/api/").unwrap();
+
+    let data: HttpRelativePath = client.get(()).unwrap();
+    assert_eq!(data.url, "https://httpbin.org/anything/api/test");
 }
