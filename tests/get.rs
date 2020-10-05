@@ -108,3 +108,19 @@ fn relative_path() {
     let data: HttpRelativePath = client.get(()).unwrap();
     assert_eq!(data.url, "https://httpbin.org/anything/api/test");
 }
+
+
+#[test]
+fn body_wash_fn() {
+    let mut client = RestClient::new("https://httpbin.org").unwrap();
+
+    // Ignore the JSON returned by the server and return a static test
+    // JSON from the body wash fn so it is easy to detect it was called.
+    let body_wash_fn = |_body: String| -> String {
+        String::from("{\"url\": \"from body wash fn\", \"args\": {}}")
+    };
+    client.set_body_wash_fn(body_wash_fn);
+
+    let data: HttpBinAnything = client.get(()).unwrap();
+    assert_eq!(data.url, "from body wash fn");
+}
