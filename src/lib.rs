@@ -54,7 +54,7 @@ use std::{error, fmt};
 use std::time::Duration;
 use url::Url;
 
-static VERSION: &'static str = env!("CARGO_PKG_VERSION");
+static VERSION: &str = env!("CARGO_PKG_VERSION");
 
 /// Type for URL query parameters.
 ///
@@ -131,18 +131,7 @@ pub struct Builder {
 
 impl fmt::Display for Error {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        fmt.write_str(error::Error::description(self))?;
-        match *self {
-            Error::SerializeParseError(ref err) => write!(fmt, ": {}", err),
-            Error::DeserializeParseError(ref err, _) => write!(fmt, ": {}", err),
-            _ => Ok(()),
-        }
-    }
-}
-
-impl error::Error for Error {
-    fn description(&self) -> &str {
-        match *self {
+        let desc = match *self {
             Error::HttpClientError => "HTTP Client creation failed",
             Error::UrlError => "Failed to parse final URL",
             Error::SerializeParseError(_) => "Failed to serialize struct to JSON (in POST)",
@@ -155,8 +144,17 @@ impl error::Error for Error {
             Error::HttpError(_, _) => "Server returned non-success status",
             Error::TimeoutError => "Request has timed out",
             Error::InvalidValue => "Invalid parameter value",
+        };
+        fmt.write_str(desc)?;
+        match *self {
+            Error::SerializeParseError(ref err) => write!(fmt, ": {}", err),
+            Error::DeserializeParseError(ref err, _) => write!(fmt, ": {}", err),
+            _ => Ok(()),
         }
     }
+}
+
+impl error::Error for Error {
     fn cause(&self) -> Option<&dyn error::Error> {
         match *self {
             Error::SerializeParseError(ref err) => Some(err),
@@ -515,7 +513,7 @@ impl RestClient {
         debug!("{} {}", req.method(), req.uri());
         trace!("{:?}", req);
 
-        let duration = self.timeout.clone();
+        let duration = self.timeout;
         let work = async {
             let res = self.client.request(req).await?;
 
@@ -539,7 +537,7 @@ impl RestClient {
 
         if !status.is_success() {
             error!("server returned \"{}\" error", status);
-            return Err(Error::HttpError(status.as_u16(), body.to_string()));
+            return Err(Error::HttpError(status.as_u16(), body));
         }
 
         trace!("response headers: {:?}", self.response_headers);
@@ -561,7 +559,7 @@ impl RestClient {
         let mut req = Request::new(hyper::Body::empty());
 
         *req.method_mut() = method;
-        *req.uri_mut() = uri.clone();
+        *req.uri_mut() = uri;
 
         if let Some(body) = body {
             if self.send_null_body || body != "null" {
