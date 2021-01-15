@@ -15,14 +15,14 @@ impl RestPath<()> for HttpBinDelete {
 
 #[test]
 fn basic_delete() {
-    let mut client = RestClient::new_blocking("http://httpbin.org").unwrap();
+    let client = RestClient::new_blocking("http://httpbin.org").unwrap();
 
     client.delete::<(), HttpBinDelete>(()).unwrap();
 }
 
 #[test]
 fn delete_with() {
-    let mut client = RestClient::new_blocking("http://httpbin.org").unwrap();
+    let client = RestClient::new_blocking("http://httpbin.org").unwrap();
 
     let params = vec![("a", "2"), ("b", "abcd")];
     let data = HttpBinDelete {

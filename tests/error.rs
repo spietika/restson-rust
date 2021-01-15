@@ -57,7 +57,7 @@ fn invalid_baseurl() {
 
 #[test]
 fn invalid_get() {
-    let mut client = RestClient::new_blocking("http://httpbin.org").unwrap();
+    let client = RestClient::new_blocking("http://httpbin.org").unwrap();
 
     if client.get::<(), InvalidResource>(()).is_ok() {
         panic!("expected error");
@@ -66,7 +66,7 @@ fn invalid_get() {
 
 #[test]
 fn invalid_post() {
-    let mut client = RestClient::new_blocking("http://httpbin.org").unwrap();
+    let client = RestClient::new_blocking("http://httpbin.org").unwrap();
 
     let data = InvalidResource {};
 
@@ -77,7 +77,7 @@ fn invalid_post() {
 
 #[test]
 fn path_error() {
-    let mut client = RestClient::new_blocking("http://httpbin.org").unwrap();
+    let client = RestClient::new_blocking("http://httpbin.org").unwrap();
 
     if let Err(Error::UrlError) = client.get::<bool, InvalidResource>(false) {
     } else {
@@ -87,7 +87,7 @@ fn path_error() {
 
 #[test]
 fn http_error() {
-    let mut client = RestClient::new_blocking("http://httpbin.org").unwrap();
+    let client = RestClient::new_blocking("http://httpbin.org").unwrap();
 
     match client.get::<_, HttpBinStatus>(418) {
         Err(Error::HttpError(s, body)) => {
@@ -115,7 +115,7 @@ fn request_timeout() {
 #[test]
 #[cfg(feature = "lib-serde-json")]
 fn deserialize_error() {
-    let mut client = RestClient::new_blocking("http://httpbin.org").unwrap();
+    let client = RestClient::new_blocking("http://httpbin.org").unwrap();
 
     // Service returns decoded base64 in body which should be string 'test'.
     // This fails JSON deserialization and is returned in the Error

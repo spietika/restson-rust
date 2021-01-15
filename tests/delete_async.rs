@@ -15,14 +15,14 @@ impl RestPath<()> for HttpBinDelete {
 
 #[tokio::test]
 async fn basic_delete() {
-    let mut client = RestClient::new("http://httpbin.org").unwrap();
+    let client = RestClient::new("http://httpbin.org").unwrap();
 
     client.delete::<(), HttpBinDelete>(()).await.unwrap();
 }
 
 #[tokio::test]
 async fn delete_with() {
-    let mut client = RestClient::new("http://httpbin.org").unwrap();
+    let client = RestClient::new("http://httpbin.org").unwrap();
 
     let params = vec![("a", "2"), ("b", "abcd")];
     let data = HttpBinDelete {

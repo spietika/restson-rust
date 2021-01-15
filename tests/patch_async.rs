@@ -14,7 +14,7 @@ impl RestPath<()> for HttpBinPatch {
 
 #[tokio::test]
 async fn basic_patch() {
-    let mut client = RestClient::new("http://httpbin.org").unwrap();
+    let client = RestClient::new("http://httpbin.org").unwrap();
 
     let data = HttpBinPatch {
         data: String::from("test data"),
@@ -24,7 +24,7 @@ async fn basic_patch() {
 
 #[tokio::test]
 async fn patch_query_params() {
-    let mut client = RestClient::new("http://httpbin.org").unwrap();
+    let client = RestClient::new("http://httpbin.org").unwrap();
 
     let params = vec![("a", "2"), ("b", "abcd")];
     let data = HttpBinPatch {

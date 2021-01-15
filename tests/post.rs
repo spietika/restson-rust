@@ -20,7 +20,7 @@ impl RestPath<()> for HttpBinPost {
 
 #[test]
 fn basic_post() {
-    let mut client = RestClient::new_blocking("https://httpbin.org").unwrap();
+    let client = RestClient::new_blocking("https://httpbin.org").unwrap();
 
     let data = HttpBinPost {
         data: String::from("test data"),
@@ -30,7 +30,7 @@ fn basic_post() {
 
 #[test]
 fn post_query_params() {
-    let mut client = RestClient::new_blocking("https://httpbin.org").unwrap();
+    let client = RestClient::new_blocking("https://httpbin.org").unwrap();
 
     let params = vec![("a", "2"), ("b", "abcd")];
     let data = HttpBinPost {
@@ -41,12 +41,12 @@ fn post_query_params() {
 
 #[test]
 fn post_capture() {
-    let mut client = RestClient::new_blocking("https://httpbin.org").unwrap();
+    let client = RestClient::new_blocking("https://httpbin.org").unwrap();
 
     let data = HttpBinPost {
         data: String::from("test data"),
     };
-    let resp: HttpBinPostResp = client.post_capture((), &data).unwrap();
+    let resp = client.post_capture::<_, _, HttpBinPostResp>((), &data).unwrap();
 
     assert_eq!(resp.json.data, "test data");
     assert_eq!(resp.url, "https://httpbin.org/post");
@@ -54,13 +54,13 @@ fn post_capture() {
 
 #[test]
 fn post_capture_query_params() {
-    let mut client = RestClient::new_blocking("https://httpbin.org").unwrap();
+    let client = RestClient::new_blocking("https://httpbin.org").unwrap();
 
     let params = vec![("a", "2"), ("b", "abcd")];
     let data = HttpBinPost {
         data: String::from("test data"),
     };
-    let resp: HttpBinPostResp = client.post_capture_with((), &data, &params).unwrap();
+    let resp = client.post_capture_with::<_, _, HttpBinPostResp>((), &data, &params).unwrap();
 
     assert_eq!(resp.json.data, "test data");
     assert_eq!(resp.url, "https://httpbin.org/post?a=2&b=abcd");

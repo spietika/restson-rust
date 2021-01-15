@@ -14,7 +14,7 @@ impl RestPath<()> for HttpBinPatch {
 
 #[test]
 fn basic_patch() {
-    let mut client = RestClient::new_blocking("http://httpbin.org").unwrap();
+    let client = RestClient::new_blocking("http://httpbin.org").unwrap();
 
     let data = HttpBinPatch {
         data: String::from("test data"),
@@ -24,7 +24,7 @@ fn basic_patch() {
 
 #[test]
 fn patch_query_params() {
-    let mut client = RestClient::new_blocking("http://httpbin.org").unwrap();
+    let client = RestClient::new_blocking("http://httpbin.org").unwrap();
 
     let params = vec![("a", "2"), ("b", "abcd")];
     let data = HttpBinPatch {

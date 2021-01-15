@@ -30,7 +30,7 @@
 //!     let mut client = RestClient::new("http://httpbin.org").unwrap();
 //!
 //!     // GET http://httpbin.org/anything and deserialize the result automatically
-//!     let data: HttpBinAnything = client.get(()).await.unwrap();
+//!     let data = client.get::<_, HttpBinAnything>(()).await.unwrap().into_inner();
 //!     println!("{:?}", data);
 //! }
 //! ```

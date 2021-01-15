@@ -20,7 +20,7 @@ impl RestPath<()> for HttpBinPut {
 
 #[tokio::test]
 async fn basic_put() {
-    let mut client = RestClient::new("https://httpbin.org").unwrap();
+    let client = RestClient::new("https://httpbin.org").unwrap();
 
     let data = HttpBinPut {
         data: String::from("test data"),
@@ -30,7 +30,7 @@ async fn basic_put() {
 
 #[tokio::test]
 async fn put_query_params() {
-    let mut client = RestClient::new("https://httpbin.org").unwrap();
+    let client = RestClient::new("https://httpbin.org").unwrap();
 
     let params = vec![("a", "2"), ("b", "abcd")];
     let data = HttpBinPut {
@@ -41,12 +41,12 @@ async fn put_query_params() {
 
 #[tokio::test]
 async fn put_capture() {
-    let mut client = RestClient::new("https://httpbin.org").unwrap();
+    let client = RestClient::new("https://httpbin.org").unwrap();
 
     let data = HttpBinPut {
         data: String::from("test data"),
     };
-    let resp: HttpBinPutResp = client.put_capture((), &data).await.unwrap();
+    let resp = client.put_capture::<_, _, HttpBinPutResp>((), &data).await.unwrap();
 
     assert_eq!(resp.json.data, "test data");
     assert_eq!(resp.url, "https://httpbin.org/put");
@@ -54,13 +54,13 @@ async fn put_capture() {
 
 #[tokio::test]
 async fn put_capture_query_params() {
-    let mut client = RestClient::new("https://httpbin.org").unwrap();
+    let client = RestClient::new("https://httpbin.org").unwrap();
 
     let params = vec![("a", "2"), ("b", "abcd")];
     let data = HttpBinPut {
         data: String::from("test data"),
     };
-    let resp: HttpBinPutResp = client.put_capture_with((), &data, &params).await.unwrap();
+    let resp = client.put_capture_with::<_, _, HttpBinPutResp>((), &data, &params).await.unwrap();
 
     assert_eq!(resp.json.data, "test data");
     assert_eq!(resp.url, "https://httpbin.org/put?a=2&b=abcd");
