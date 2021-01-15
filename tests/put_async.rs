@@ -18,49 +18,49 @@ impl RestPath<()> for HttpBinPut {
     }
 }
 
-#[test]
-fn basic_put() {
-    let mut client = RestClient::new_blocking("https://httpbin.org").unwrap();
+#[tokio::test]
+async fn basic_put() {
+    let mut client = RestClient::new("https://httpbin.org").unwrap();
 
     let data = HttpBinPut {
         data: String::from("test data"),
     };
-    client.put((), &data).unwrap();
+    client.put((), &data).await.unwrap();
 }
 
-#[test]
-fn put_query_params() {
-    let mut client = RestClient::new_blocking("https://httpbin.org").unwrap();
+#[tokio::test]
+async fn put_query_params() {
+    let mut client = RestClient::new("https://httpbin.org").unwrap();
 
     let params = vec![("a", "2"), ("b", "abcd")];
     let data = HttpBinPut {
         data: String::from("test data"),
     };
-    client.put_with((), &data, &params).unwrap();
+    client.put_with((), &data, &params).await.unwrap();
 }
 
-#[test]
-fn put_capture() {
-    let mut client = RestClient::new_blocking("https://httpbin.org").unwrap();
+#[tokio::test]
+async fn put_capture() {
+    let mut client = RestClient::new("https://httpbin.org").unwrap();
 
     let data = HttpBinPut {
         data: String::from("test data"),
     };
-    let resp: HttpBinPutResp = client.put_capture((), &data).unwrap();
+    let resp: HttpBinPutResp = client.put_capture((), &data).await.unwrap();
 
     assert_eq!(resp.json.data, "test data");
     assert_eq!(resp.url, "https://httpbin.org/put");
 }
 
-#[test]
-fn put_capture_query_params() {
-    let mut client = RestClient::new_blocking("https://httpbin.org").unwrap();
+#[tokio::test]
+async fn put_capture_query_params() {
+    let mut client = RestClient::new("https://httpbin.org").unwrap();
 
     let params = vec![("a", "2"), ("b", "abcd")];
     let data = HttpBinPut {
         data: String::from("test data"),
     };
-    let resp: HttpBinPutResp = client.put_capture_with((), &data, &params).unwrap();
+    let resp: HttpBinPutResp = client.put_capture_with((), &data, &params).await.unwrap();
 
     assert_eq!(resp.json.data, "test data");
     assert_eq!(resp.url, "https://httpbin.org/put?a=2&b=abcd");

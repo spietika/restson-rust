@@ -24,48 +24,48 @@ impl RestPath<()> for HttpBinAnything {
     }
 }
 
-#[test]
-fn headers() {
-    let mut client = RestClient::new_blocking("http://httpbin.org").unwrap();
+#[tokio::test]
+async fn headers() {
+    let mut client = RestClient::new("http://httpbin.org").unwrap();
 
     client
         .set_header(USER_AGENT.as_str(), "restson-test")
         .unwrap();
 
-    let data: HttpBinAnything = client.get(()).unwrap();
+    let data: HttpBinAnything = client.get(()).await.unwrap();
     assert_eq!(data.headers.user_agent, "restson-test");
 }
 
-#[test]
-fn headers_clear() {
-    let mut client = RestClient::new_blocking("http://httpbin.org").unwrap();
+#[tokio::test]
+async fn headers_clear() {
+    let mut client = RestClient::new("http://httpbin.org").unwrap();
 
     client.set_header("X-Test", "12345").unwrap();
 
-    let data: HttpBinAnything = client.get(()).unwrap();
+    let data: HttpBinAnything = client.get(()).await.unwrap();
     assert_eq!(data.headers.test, "12345");
 
     client.clear_headers();
 
-    let data: HttpBinAnything = client.get(()).unwrap();
+    let data: HttpBinAnything = client.get(()).await.unwrap();
     assert_eq!(data.headers.test, "");
 }
 
-#[test]
-fn default_user_agent() {
-    let mut client = RestClient::new_blocking("http://httpbin.org").unwrap();
+#[tokio::test]
+async fn default_user_agent() {
+    let mut client = RestClient::new("http://httpbin.org").unwrap();
 
-    let data: HttpBinAnything = client.get(()).unwrap();
+    let data: HttpBinAnything = client.get(()).await.unwrap();
     assert_eq!(
         data.headers.user_agent,
         "restson/".to_owned() + env!("CARGO_PKG_VERSION")
     );
 }
 
-#[test]
-fn response_headers() {
-    let mut client = RestClient::new_blocking("http://httpbin.org").unwrap();
+#[tokio::test]
+async fn response_headers() {
+    let mut client = RestClient::new("http://httpbin.org").unwrap();
 
-    let _data: HttpBinAnything = client.get(()).unwrap();
+    let _data: HttpBinAnything = client.get(()).await.unwrap();
     assert_eq!(client.response_headers()["content-type"], "application/json");
 }
