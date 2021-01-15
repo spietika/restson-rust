@@ -13,22 +13,22 @@ impl RestPath<()> for HttpBinDelete {
 }
 
 
-#[test]
-fn basic_delete() {
-    let mut client = RestClient::new_blocking("http://httpbin.org").unwrap();
+#[tokio::test]
+async fn basic_delete() {
+    let mut client = RestClient::new("http://httpbin.org").unwrap();
 
-    client.delete::<(), HttpBinDelete>(()).unwrap();
+    client.delete::<(), HttpBinDelete>(()).await.unwrap();
 }
 
-#[test]
-fn delete_with() {
-    let mut client = RestClient::new_blocking("http://httpbin.org").unwrap();
+#[tokio::test]
+async fn delete_with() {
+    let mut client = RestClient::new("http://httpbin.org").unwrap();
 
     let params = vec![("a", "2"), ("b", "abcd")];
     let data = HttpBinDelete {
         data: String::from("test data"),
     };
-    client.delete_with((), &data, &params).unwrap();
+    client.delete_with((), &data, &params).await.unwrap();
 
-    client.delete_with((), &data, &vec![]).unwrap();
+    client.delete_with((), &data, &vec![]).await.unwrap();
 }

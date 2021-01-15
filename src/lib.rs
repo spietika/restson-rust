@@ -24,12 +24,13 @@
 //!     fn get_path(_: ()) -> Result<String,Error> { Ok(String::from("anything")) }
 //! }
 //!
-//! fn main() {
+//! #[tokio::main]
+//! async fn main() {
 //!     // Create new client with API base URL
 //!     let mut client = RestClient::new("http://httpbin.org").unwrap();
 //!
 //!     // GET http://httpbin.org/anything and deserialize the result automatically
-//!     let data: HttpBinAnything = client.get(()).unwrap();
+//!     let data: HttpBinAnything = client.get(()).await.unwrap();
 //!     println!("{:?}", data);
 //! }
 //! ```
