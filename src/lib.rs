@@ -42,6 +42,7 @@ use hyper::{Client, Method, Request};
 use hyper_tls::HttpsConnector;
 use log::{debug, trace, error};
 use std::{error, fmt};
+use std::ops::Deref;
 use std::time::Duration;
 use url::Url;
 
@@ -64,6 +65,43 @@ static VERSION: &str = env!("CARGO_PKG_VERSION");
 pub type Query<'a> = [(&'a str, &'a str)];
 
 pub type HyperClient = Client<HttpsConnector<hyper::client::HttpConnector>>;
+
+/// Type returned by client query functions
+#[derive(Debug)]
+pub struct Response<T> {
+    body: T,
+    headers: HeaderMap,
+}
+
+impl<T> Response<T> {
+    /// Unwraps the response, getting the owned inner body
+    pub fn into_inner(self) -> T {
+        self.body
+    }
+
+    /// Response headers sent by the server
+    pub fn headers(&self) -> &HeaderMap {
+        &self.headers
+    }
+}
+
+impl Response<String> {
+    /// Parse a response body
+    fn parse<T: serde::de::DeserializeOwned>(self) -> Result<Response<T>, Error> {
+        let Self { body, headers } = self;
+        serde_json::from_str(&body)
+            .map(|body| Response { body, headers })
+            .map_err(|err| Error::DeserializeParseError(err, body))
+    }
+}
+
+impl<T> Deref for Response<T> {
+    type Target = T;
+
+    fn deref(&self) -> &Self::Target {
+        &self.body
+    }
+}
 
 /// REST client to make HTTP GET and POST requests.
 pub struct RestClient {
@@ -319,47 +357,29 @@ impl RestClient {
     }
 
     /// Make a GET request.
-    pub async fn get<U, T>(&self, params: U) -> Result<T, Error>
+    pub async fn get<U, T>(&self, params: U) -> Result<Response<T>, Error>
     where
         T: serde::de::DeserializeOwned + RestPath<U>,
     {
         let req = self.make_request::<U, T>(Method::GET, params, None, None)?;
+        let res = self.run_request(req).await?;
 
-        #[cfg(feature = "lib-serde-json")]
-        {
-            let body = self.run_request(req).await?;
-            serde_json::from_str(body.as_str()).map_err(|err| Error::DeserializeParseError(err, body))
-        }
-
-        #[cfg(feature = "lib-simd-json")]
-        {
-            let body = self.run_request(req).await?;
-            simd_json::serde::from_str(body).map_err(|err| Error::DeserializeParseSimdJsonError(err, body))
-        }
+        res.parse()
     }
 
     /// Make a GET request with query parameters.
-    pub async fn get_with<U, T>(&self, params: U, query: &Query<'_>) -> Result<T, Error>
+    pub async fn get_with<U, T>(&self, params: U, query: &Query<'_>) -> Result<Response<T>, Error>
     where
         T: serde::de::DeserializeOwned + RestPath<U>,
     {
         let req = self.make_request::<U, T>(Method::GET, params, Some(query), None)?;
-        
-        #[cfg(feature = "lib-serde-json")]
-        {
-            let body = self.run_request(req).await?;
-            serde_json::from_str(body.as_str()).map_err(|err| Error::DeserializeParseError(err, body))
-        }
-        
-        #[cfg(feature = "lib-simd-json")]
-        {
-            let mut body = self.run_request(req).await?;
-            simd_json::serde::from_str(body).map_err(|err| Error::DeserializeParseSimdJsonError(err, body))
-        }
+        let res = self.run_request(req).await?;
+
+        res.parse()
     }
 
     /// Make a POST request.
-    pub async fn post<U, T>(&self, params: U, data: &T) -> Result<(), Error>
+    pub async fn post<U, T>(&self, params: U, data: &T) -> Result<Response<()>, Error>
     where
         T: serde::Serialize + RestPath<U>,
     {
@@ -367,7 +387,7 @@ impl RestClient {
     }
 
     /// Make a PUT request.
-    pub async fn put<U, T>(&self, params: U, data: &T) -> Result<(), Error>
+    pub async fn put<U, T>(&self, params: U, data: &T) -> Result<Response<()>, Error>
     where
         T: serde::Serialize + RestPath<U>,
     {
@@ -375,26 +395,26 @@ impl RestClient {
     }
 
     /// Make a PATCH request.
-    pub async fn patch<U, T>(&self, params: U, data: &T) -> Result<(), Error>
+    pub async fn patch<U, T>(&self, params: U, data: &T) -> Result<Response<()>, Error>
     where
         T: serde::Serialize + RestPath<U>,
     {
         self.post_or_put(Method::PATCH, params, data).await
     }
 
-    async fn post_or_put<U, T>(&self, method: Method, params: U, data: &T) -> Result<(), Error>
+    async fn post_or_put<U, T>(&self, method: Method, params: U, data: &T) -> Result<Response<()>, Error>
     where
         T: serde::Serialize + RestPath<U>,
     {
         let data = serde_json::to_string(data).map_err(Error::SerializeParseError)?;
 
         let req = self.make_request::<U, T>(method, params, None, Some(data))?;
-        self.run_request(req).await?;
-        Ok(())
+        let res = self.run_request(req).await?;
+        Ok(Response { body: (), headers: res.headers })
     }
 
     /// Make POST request with query parameters.
-    pub async fn post_with<U, T>(&self, params: U, data: &T, query: &Query<'_>) -> Result<(), Error>
+    pub async fn post_with<U, T>(&self, params: U, data: &T, query: &Query<'_>) -> Result<Response<()>, Error>
     where
         T: serde::Serialize + RestPath<U>,
     {
@@ -402,7 +422,7 @@ impl RestClient {
     }
 
     /// Make PUT request with query parameters.
-    pub async fn put_with<U, T>(&self, params: U, data: &T, query: &Query<'_>) -> Result<(), Error>
+    pub async fn put_with<U, T>(&self, params: U, data: &T, query: &Query<'_>) -> Result<Response<()>, Error>
     where
         T: serde::Serialize + RestPath<U>,
     {
@@ -410,7 +430,7 @@ impl RestClient {
     }
 
     /// Make PATCH request with query parameters.
-    pub async fn patch_with<U, T>(&self, params: U, data: &T, query: &Query<'_>) -> Result<(), Error>
+    pub async fn patch_with<U, T>(&self, params: U, data: &T, query: &Query<'_>) -> Result<Response<()>, Error>
     where
         T: serde::Serialize + RestPath<U>,
     {
@@ -423,19 +443,19 @@ impl RestClient {
         params: U,
         data: &T,
         query: &Query<'_>,
-    ) -> Result<(), Error>
+    ) -> Result<Response<()>, Error>
     where
         T: serde::Serialize + RestPath<U>,
     {
         let data = serde_json::to_string(data).map_err(Error::SerializeParseError)?;
 
         let req = self.make_request::<U, T>(method, params, Some(query), Some(data))?;
-        self.run_request(req).await?;
-        Ok(())
+        let res = self.run_request(req).await?;
+        Ok(Response { body: (), headers: res.headers })
     }
 
     /// Make a POST request and capture returned body.
-    pub async fn post_capture<U, T, K>(&self, params: U, data: &T) -> Result<K, Error>
+    pub async fn post_capture<U, T, K>(&self, params: U, data: &T) -> Result<Response<K>, Error>
     where
         T: serde::Serialize + RestPath<U>,
         K: serde::de::DeserializeOwned,
@@ -444,7 +464,7 @@ impl RestClient {
     }
 
     /// Make a PUT request and capture returned body.
-    pub async fn put_capture<U, T, K>(&self, params: U, data: &T) -> Result<K, Error>
+    pub async fn put_capture<U, T, K>(&self, params: U, data: &T) -> Result<Response<K>, Error>
     where
         T: serde::Serialize + RestPath<U>,
         K: serde::de::DeserializeOwned,
@@ -457,7 +477,7 @@ impl RestClient {
         method: Method,
         params: U,
         data: &T,
-    ) -> Result<K, Error>
+    ) -> Result<Response<K>, Error>
     where
         T: serde::Serialize + RestPath<U>,
         K: serde::de::DeserializeOwned,
@@ -465,8 +485,8 @@ impl RestClient {
         let data = serde_json::to_string(data).map_err(Error::SerializeParseError)?;
 
         let req = self.make_request::<U, T>(method, params, None, Some(data))?;
-        let body = self.run_request(req).await?;
-        serde_json::from_str(body.as_str()).map_err(|err| Error::DeserializeParseError(err, body))
+        let res = self.run_request(req).await?;
+        res.parse()
     }
 
     /// Make a POST request with query parameters and capture returned body.
@@ -475,7 +495,7 @@ impl RestClient {
         params: U,
         data: &T,
         query: &Query<'_>,
-    ) -> Result<K, Error>
+    ) -> Result<Response<K>, Error>
     where
         T: serde::Serialize + RestPath<U>,
         K: serde::de::DeserializeOwned,
@@ -489,7 +509,7 @@ impl RestClient {
         params: U,
         data: &T,
         query: &Query<'_>,
-    ) -> Result<K, Error>
+    ) -> Result<Response<K>, Error>
     where
         T: serde::Serialize + RestPath<U>,
         K: serde::de::DeserializeOwned,
@@ -503,7 +523,7 @@ impl RestClient {
         params: U,
         data: &T,
         query: &Query<'_>,
-    ) -> Result<K, Error>
+    ) -> Result<Response<K>, Error>
     where
         T: serde::Serialize + RestPath<U>,
         K: serde::de::DeserializeOwned,
@@ -511,32 +531,32 @@ impl RestClient {
         let data = serde_json::to_string(data).map_err(Error::SerializeParseError)?;
 
         let req = self.make_request::<U, T>(method, params, Some(query), Some(data))?;
-        let body = self.run_request(req).await?;
-        serde_json::from_str(body.as_str()).map_err(|err| Error::DeserializeParseError(err, body))
+        let res = self.run_request(req).await?;
+        res.parse()
     }
 
     /// Make a DELETE request.
-    pub async fn delete<U, T>(&self, params: U) -> Result<(), Error>
+    pub async fn delete<U, T>(&self, params: U) -> Result<Response<()>, Error>
     where
         T: RestPath<U>,
     {
         let req = self.make_request::<U, T>(Method::DELETE, params, None, None)?;
-        self.run_request(req).await?;
-        Ok(())
+        let res = self.run_request(req).await?;
+        Ok(Response { body: (), headers: res.headers })
     }
 
     /// Make a DELETE request with query and body.
-    pub async fn delete_with<U, T>(&self, params: U, data: &T, query: &Query<'_>) -> Result<(), Error>
+    pub async fn delete_with<U, T>(&self, params: U, data: &T, query: &Query<'_>) -> Result<Response<()>, Error>
     where
         T: serde::Serialize + RestPath<U>,
     {
         let data = serde_json::to_string(data).map_err(Error::SerializeParseError)?;
         let req = self.make_request::<U, T>(Method::DELETE, params, Some(query), Some(data))?;
-        self.run_request(req).await?;
-        Ok(())
+        let res = self.run_request(req).await?;
+        Ok(Response { body: (), headers: res.headers })
     }
 
-    async fn run_request(&self, req: hyper::Request<hyper::Body>) -> Result<String, Error> {
+    async fn run_request(&self, req: hyper::Request<hyper::Body>) -> Result<Response<String>, Error> {
         debug!("{} {}", req.method(), req.uri());
         trace!("{:?}", req);
 
@@ -570,7 +590,7 @@ impl RestClient {
 
         trace!("response headers: {:?}", response_headers);
         trace!("response body: {}", body);
-        Ok((self.body_wash_fn)(body))
+        Ok(Response { body: (self.body_wash_fn)(body), headers: response_headers })
     }
 
     fn make_request<U, T>(

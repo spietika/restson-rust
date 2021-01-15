@@ -1,6 +1,6 @@
 //! Blocking variant of the `RestClient`
 
-use crate::{Error, Query, RestClient as AsyncRestClient, RestPath};
+use crate::{Error, Query, Response, RestClient as AsyncRestClient, RestPath};
 use hyper::header::HeaderValue;
 use std::time::Duration;
 
@@ -57,7 +57,7 @@ impl RestClient {
 
     /// Make a GET request.
     #[tokio::main(flavor = "current_thread")]
-    pub async fn get<U, T>(&self, params: U) -> Result<T, Error>
+    pub async fn get<U, T>(&self, params: U) -> Result<Response<T>, Error>
     where
         T: serde::de::DeserializeOwned + RestPath<U>,
     {
@@ -66,7 +66,7 @@ impl RestClient {
 
     /// Make a GET request with query parameters.
     #[tokio::main(flavor = "current_thread")]
-    pub async fn get_with<U, T>(&self, params: U, query: &Query<'_>) -> Result<T, Error>
+    pub async fn get_with<U, T>(&self, params: U, query: &Query<'_>) -> Result<Response<T>, Error>
     where
         T: serde::de::DeserializeOwned + RestPath<U>,
     {
@@ -75,7 +75,7 @@ impl RestClient {
 
     /// Make a POST request.
     #[tokio::main(flavor = "current_thread")]
-    pub async fn post<U, T>(&self, params: U, data: &T) -> Result<(), Error>
+    pub async fn post<U, T>(&self, params: U, data: &T) -> Result<Response<()>, Error>
     where
         T: serde::Serialize + RestPath<U>,
     {
@@ -84,7 +84,7 @@ impl RestClient {
 
     /// Make a PUT request.
     #[tokio::main(flavor = "current_thread")]
-    pub async fn put<U, T>(&self, params: U, data: &T) -> Result<(), Error>
+    pub async fn put<U, T>(&self, params: U, data: &T) -> Result<Response<()>, Error>
     where
         T: serde::Serialize + RestPath<U>,
     {
@@ -93,7 +93,7 @@ impl RestClient {
 
     /// Make a PATCH request.
     #[tokio::main(flavor = "current_thread")]
-    pub async fn patch<U, T>(&self, params: U, data: &T) -> Result<(), Error>
+    pub async fn patch<U, T>(&self, params: U, data: &T) -> Result<Response<()>, Error>
     where
         T: serde::Serialize + RestPath<U>,
     {
@@ -102,7 +102,7 @@ impl RestClient {
 
     /// Make POST request with query parameters.
     #[tokio::main(flavor = "current_thread")]
-    pub async fn post_with<U, T>(&self, params: U, data: &T, query: &Query<'_>) -> Result<(), Error>
+    pub async fn post_with<U, T>(&self, params: U, data: &T, query: &Query<'_>) -> Result<Response<()>, Error>
     where
         T: serde::Serialize + RestPath<U>,
     {
@@ -111,7 +111,7 @@ impl RestClient {
 
     /// Make PUT request with query parameters.
     #[tokio::main(flavor = "current_thread")]
-    pub async fn put_with<U, T>(&self, params: U, data: &T, query: &Query<'_>) -> Result<(), Error>
+    pub async fn put_with<U, T>(&self, params: U, data: &T, query: &Query<'_>) -> Result<Response<()>, Error>
     where
         T: serde::Serialize + RestPath<U>,
     {
@@ -120,7 +120,7 @@ impl RestClient {
 
     /// Make PATCH request with query parameters.
     #[tokio::main(flavor = "current_thread")]
-    pub async fn patch_with<U, T>(&self, params: U, data: &T, query: &Query<'_>) -> Result<(), Error>
+    pub async fn patch_with<U, T>(&self, params: U, data: &T, query: &Query<'_>) -> Result<Response<()>, Error>
     where
         T: serde::Serialize + RestPath<U>,
     {
@@ -129,7 +129,7 @@ impl RestClient {
 
     /// Make a POST request and capture returned body.
     #[tokio::main(flavor = "current_thread")]
-    pub async fn post_capture<U, T, K>(&self, params: U, data: &T) -> Result<K, Error>
+    pub async fn post_capture<U, T, K>(&self, params: U, data: &T) -> Result<Response<K>, Error>
     where
         T: serde::Serialize + RestPath<U>,
         K: serde::de::DeserializeOwned,
@@ -139,7 +139,7 @@ impl RestClient {
 
     /// Make a PUT request and capture returned body.
     #[tokio::main(flavor = "current_thread")]
-    pub async fn put_capture<U, T, K>(&self, params: U, data: &T) -> Result<K, Error>
+    pub async fn put_capture<U, T, K>(&self, params: U, data: &T) -> Result<Response<K>, Error>
     where
         T: serde::Serialize + RestPath<U>,
         K: serde::de::DeserializeOwned,
@@ -154,7 +154,7 @@ impl RestClient {
         params: U,
         data: &T,
         query: &Query<'_>,
-    ) -> Result<K, Error>
+    ) -> Result<Response<K>, Error>
     where
         T: serde::Serialize + RestPath<U>,
         K: serde::de::DeserializeOwned,
@@ -169,7 +169,7 @@ impl RestClient {
         params: U,
         data: &T,
         query: &Query<'_>,
-    ) -> Result<K, Error>
+    ) -> Result<Response<K>, Error>
     where
         T: serde::Serialize + RestPath<U>,
         K: serde::de::DeserializeOwned,
@@ -179,7 +179,7 @@ impl RestClient {
 
     /// Make a DELETE request.
     #[tokio::main(flavor = "current_thread")]
-    pub async fn delete<U, T>(&self, params: U) -> Result<(), Error>
+    pub async fn delete<U, T>(&self, params: U) -> Result<Response<()>, Error>
     where
         T: RestPath<U>,
     {
@@ -188,7 +188,7 @@ impl RestClient {
 
     /// Make a DELETE request with query and body.
     #[tokio::main(flavor = "current_thread")]
-    pub async fn delete_with<U, T>(&self, params: U, data: &T, query: &Query<'_>) -> Result<(), Error>
+    pub async fn delete_with<U, T>(&self, params: U, data: &T, query: &Query<'_>) -> Result<Response<()>, Error>
     where
         T: serde::Serialize + RestPath<U>,
     {
