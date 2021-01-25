@@ -19,3 +19,7 @@ serde_json = "^1.0"
 url = "2"
 log = "^0.4.6"
 base64 = "0.13"
+
+[features]
+default = []
+blocking = ["tokio/macros"]
