@@ -44,6 +44,9 @@ use std::{error, fmt};
 use std::time::Duration;
 use url::Url;
 
+#[cfg(feature = "blocking")]
+pub mod blocking;
+
 static VERSION: &str = env!("CARGO_PKG_VERSION");
 
 /// Type for URL query parameters.
@@ -204,6 +207,13 @@ impl Builder {
     pub fn build(self, url: &str) -> Result<RestClient, Error> {
         RestClient::with_builder(url, self)
     }
+
+    #[cfg(feature = "blocking")]
+    /// Create [`blocking::RestClient`](blocking/struct.RestClient.html) with the configuration in
+    /// this builder
+    pub fn blocking(self, url: &str) -> Result<blocking::RestClient, Error> {
+        RestClient::with_builder(url, self).map(|client| client.into())
+    }
 }
 
 /// Rest path builder trait for type.
@@ -224,6 +234,14 @@ impl RestClient {
     /// Use `Builder` to configure the client.
     pub fn new(url: &str) -> Result<RestClient, Error> {
         RestClient::with_builder(url, RestClient::builder())
+    }
+
+    /// Construct new blocking client with default configuration to make HTTP requests.
+    ///
+    /// Use `Builder` to configure the client.
+    #[cfg(feature = "blocking")]
+    pub fn new_blocking(url: &str) -> Result<blocking::RestClient, Error> {
+        RestClient::new(url).map(|client| client.into())
     }
 
     fn with_builder(url: &str, builder: Builder) -> Result<RestClient, Error> {
