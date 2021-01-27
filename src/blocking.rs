@@ -61,7 +61,7 @@ impl RestClient {
     }
 
     /// Make a GET request.
-    #[tokio::main]
+    #[tokio::main(flavor = "current_thread")]
     pub async fn get<U, T>(&mut self, params: U) -> Result<T, Error>
     where
         T: serde::de::DeserializeOwned + RestPath<U>,
@@ -70,7 +70,7 @@ impl RestClient {
     }
 
     /// Make a GET request with query parameters.
-    #[tokio::main]
+    #[tokio::main(flavor = "current_thread")]
     pub async fn get_with<U, T>(&mut self, params: U, query: &Query<'_>) -> Result<T, Error>
     where
         T: serde::de::DeserializeOwned + RestPath<U>,
@@ -79,7 +79,7 @@ impl RestClient {
     }
 
     /// Make a POST request.
-    #[tokio::main]
+    #[tokio::main(flavor = "current_thread")]
     pub async fn post<U, T>(&mut self, params: U, data: &T) -> Result<(), Error>
     where
         T: serde::Serialize + RestPath<U>,
@@ -88,7 +88,7 @@ impl RestClient {
     }
 
     /// Make a PUT request.
-    #[tokio::main]
+    #[tokio::main(flavor = "current_thread")]
     pub async fn put<U, T>(&mut self, params: U, data: &T) -> Result<(), Error>
     where
         T: serde::Serialize + RestPath<U>,
@@ -97,7 +97,7 @@ impl RestClient {
     }
 
     /// Make a PATCH request.
-    #[tokio::main]
+    #[tokio::main(flavor = "current_thread")]
     pub async fn patch<U, T>(&mut self, params: U, data: &T) -> Result<(), Error>
     where
         T: serde::Serialize + RestPath<U>,
@@ -106,7 +106,7 @@ impl RestClient {
     }
 
     /// Make POST request with query parameters.
-    #[tokio::main]
+    #[tokio::main(flavor = "current_thread")]
     pub async fn post_with<U, T>(&mut self, params: U, data: &T, query: &Query<'_>) -> Result<(), Error>
     where
         T: serde::Serialize + RestPath<U>,
@@ -115,7 +115,7 @@ impl RestClient {
     }
 
     /// Make PUT request with query parameters.
-    #[tokio::main]
+    #[tokio::main(flavor = "current_thread")]
     pub async fn put_with<U, T>(&mut self, params: U, data: &T, query: &Query<'_>) -> Result<(), Error>
     where
         T: serde::Serialize + RestPath<U>,
@@ -124,7 +124,7 @@ impl RestClient {
     }
 
     /// Make PATCH request with query parameters.
-    #[tokio::main]
+    #[tokio::main(flavor = "current_thread")]
     pub async fn patch_with<U, T>(&mut self, params: U, data: &T, query: &Query<'_>) -> Result<(), Error>
     where
         T: serde::Serialize + RestPath<U>,
@@ -133,7 +133,7 @@ impl RestClient {
     }
 
     /// Make a POST request and capture returned body.
-    #[tokio::main]
+    #[tokio::main(flavor = "current_thread")]
     pub async fn post_capture<U, T, K>(&mut self, params: U, data: &T) -> Result<K, Error>
     where
         T: serde::Serialize + RestPath<U>,
@@ -143,7 +143,7 @@ impl RestClient {
     }
 
     /// Make a PUT request and capture returned body.
-    #[tokio::main]
+    #[tokio::main(flavor = "current_thread")]
     pub async fn put_capture<U, T, K>(&mut self, params: U, data: &T) -> Result<K, Error>
     where
         T: serde::Serialize + RestPath<U>,
@@ -153,7 +153,7 @@ impl RestClient {
     }
 
     /// Make a POST request with query parameters and capture returned body.
-    #[tokio::main]
+    #[tokio::main(flavor = "current_thread")]
     pub async fn post_capture_with<U, T, K>(
         &mut self,
         params: U,
@@ -168,7 +168,7 @@ impl RestClient {
     }
 
     /// Make a PUT request with query parameters and capture returned body.
-    #[tokio::main]
+    #[tokio::main(flavor = "current_thread")]
     pub async fn put_capture_with<U, T, K>(
         &mut self,
         params: U,
@@ -183,7 +183,7 @@ impl RestClient {
     }
 
     /// Make a DELETE request.
-    #[tokio::main]
+    #[tokio::main(flavor = "current_thread")]
     pub async fn delete<U, T>(&mut self, params: U) -> Result<(), Error>
     where
         T: RestPath<U>,
@@ -192,7 +192,7 @@ impl RestClient {
     }
 
     /// Make a DELETE request with query and body.
-    #[tokio::main]
+    #[tokio::main(flavor = "current_thread")]
     pub async fn delete_with<U, T>(&mut self, params: U, data: &T, query: &Query<'_>) -> Result<(), Error>
     where
         T: serde::Serialize + RestPath<U>,

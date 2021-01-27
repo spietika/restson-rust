@@ -11,9 +11,10 @@ license = "MIT"
 edition = "2018"
 
 [dependencies]
-hyper = { version = "^0.13.2", default-features = false }
-hyper-tls = "^0.4.1"
-tokio = { version = "^0.2", features = ["time"] }
+hyper = { version = "0.14", features = ["client", "http1", "http2"] }
+hyper-tls = "0.5"
+futures = "^0.3"
+tokio = { version = "1", features = ["time"] }
 serde = { version = "^1.0", features = ["derive"], optional = true }
 serde_json = { version = "1.0", optional = true }
 simd-json = { version = "0.1", optional = true }
@@ -23,7 +24,7 @@ base64 = "0.13"
 
 [dev-dependencies]
 serde_derive = "^1.0"
-tokio = { version = "^0.2", features = ["macros"] }
+tokio = { version = "1", features = ["macros"] }
 
 [features]
 default = ["blocking", "lib-serde-json"]

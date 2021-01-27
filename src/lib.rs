@@ -24,7 +24,7 @@
 //!     fn get_path(_: ()) -> Result<String,Error> { Ok(String::from("anything")) }
 //! }
 //!
-//! #[tokio::main]
+//! #[tokio::main(flavor = "current_thread")]
 //! async fn main() {
 //!     // Create new client with API base URL
 //!     let mut client = RestClient::new("http://httpbin.org").unwrap();
@@ -172,8 +172,8 @@ impl std::convert::From<hyper::Error> for Error {
     }
 }
 
-impl std::convert::From<tokio::time::Elapsed> for Error {
-    fn from(_e: tokio::time::Elapsed) -> Self {
+impl std::convert::From<tokio::time::error::Elapsed> for Error {
+    fn from(_e: tokio::time::error::Elapsed) -> Self {
         Error::TimeoutError
     }
 }
@@ -553,7 +553,8 @@ impl RestClient {
 
             self.response_headers = res.headers().clone();
             let status = res.status();
-            let body = hyper::body::aggregate(res).await?.to_bytes();
+            let mut body = hyper::body::aggregate(res).await?;
+            let body = body.copy_to_bytes(body.remaining());
 
             let body = String::from_utf8_lossy(&body);
 
