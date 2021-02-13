@@ -25,7 +25,7 @@ impl RestClient {
     /// Set credentials for HTTP Basic authentication.
     pub fn set_auth(&mut self, user: &str, pass: &str) {
         let mut s: String = user.to_owned();
-        s.push_str(":");
+        s.push(':');
         s.push_str(pass);
         self.inner_client.auth = Some("Basic ".to_owned() + &base64::encode(&s));
     }
