@@ -317,29 +317,26 @@ impl RestClient {
         &self.response_headers
     }
 
-    /// Make a GET request with simd_json library.
-    #[cfg(feature = "lib-simd-json")]
-    pub async fn get_simd<U, T>(&mut self, params: U) -> Result<T, Error>
-    where
-        T: serde::de::DeserializeOwned + RestPath<U>,
-    {
-        let req = self.make_request::<U, T>(Method::GET, params, None, None)?;
-        let mut body = self.run_request(req).await?;
-        let _parsed = simd_json::serde::from_str(&mut body);
-        let result: Result<T, Error> = Ok(_parsed.unwrap());
-        result
-    }
-
     /// Make a GET request with serde json.
-    #[cfg(feature = "lib-serde-json")]
     pub async fn get<U, T>(&mut self, params: U) -> Result<T, Error>
     where
         T: serde::de::DeserializeOwned + RestPath<U>,
     {
         let req = self.make_request::<U, T>(Method::GET, params, None, None)?;
-        let body = self.run_request(req).await?;
 
-        serde_json::from_str(body.as_str()).map_err(|err| Error::DeserializeParseError(err, body))
+        #[cfg(feature = "lib-serde-json")]
+        {
+            let body = self.run_request(req).await?;
+            serde_json::from_str(body.as_str()).map_err(|err| Error::DeserializeParseError(err, body))
+        }
+
+        #[cfg(feature = "lib-simd-json")]
+        {
+            let mut body = self.run_request(req).await?;
+            let _parsed = simd_json::serde::from_str(&mut body);
+            let result: Result<T, Error> = Ok(_parsed.unwrap());
+            result
+        }
     }
 
     /// Make a GET request with query parameters.
@@ -348,9 +345,21 @@ impl RestClient {
         T: serde::de::DeserializeOwned + RestPath<U>,
     {
         let req = self.make_request::<U, T>(Method::GET, params, Some(query), None)?;
-        let body = self.run_request(req).await?;
+        
+        #[cfg(feature = "lib-serde-json")]
+        {
+            let body = self.run_request(req).await?;
+            serde_json::from_str(body.as_str()).map_err(|err| Error::DeserializeParseError(err, body))
+        }
+        
+        #[cfg(feature = "lib-simd-json")]
+        {
+            let mut body = self.run_request(req).await?;
 
-        serde_json::from_str(body.as_str()).map_err(|err| Error::DeserializeParseError(err, body))
+            let _parsed = simd_json::serde::from_str(&mut body);
+            let result: Result<T, Error> = Ok(_parsed.unwrap());
+            result
+        }
     }
 
     /// Make a POST request.
