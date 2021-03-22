@@ -61,22 +61,12 @@ impl RestClient {
     }
 
     /// Make a GET request.
-    #[cfg(feature = "lib-serde-json")]
     #[tokio::main]
     pub async fn get<U, T>(&mut self, params: U) -> Result<T, Error>
     where
         T: serde::de::DeserializeOwned + RestPath<U>,
     {
         self.inner_client.get(params).await
-    }
-
-    #[tokio::main]
-    #[cfg(feature = "lib-simd-json")]
-    pub async fn get_simd<U, T>(&mut self, params: U) -> Result<T, Error>
-    where
-        T: serde::de::DeserializeOwned + RestPath<U>,
-    {
-        self.inner_client.get_simd(params).await
     }
 
     /// Make a GET request with query parameters.
