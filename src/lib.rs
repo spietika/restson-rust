@@ -317,7 +317,7 @@ impl RestClient {
         &self.response_headers
     }
 
-    /// Make a GET request with serde json.
+    /// Make a GET request
     pub async fn get<U, T>(&mut self, params: U) -> Result<T, Error>
     where
         T: serde::de::DeserializeOwned + RestPath<U>,
