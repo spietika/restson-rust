@@ -353,17 +353,13 @@ impl RestClient {
         #[cfg(feature = "lib-serde-json")]
         {
             let body = self.run_request(req).await?;
-            let _parsed = serde_json::from_str(body.as_str()).map_err(|err| Error::DeserializeParseError(err, body));
-            return _parsed;
+            serde_json::from_str(body.as_str()).map_err(|err| Error::DeserializeParseError(err, body))
         }
         
         #[cfg(feature = "lib-simd-json")]
         {
             let mut body = self.run_request(req).await?;
-
-            let _parsed = simd_json::serde::from_str(&mut body);
-            let result: Result<T, Error> = Ok(_parsed.unwrap());
-            return result;
+            simd_json::serde::from_str(&mut body).map_err(|err| Error::DeserializeParseSimdJsonError(err, body))
         }
     }
 
