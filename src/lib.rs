@@ -92,6 +92,9 @@ pub enum Error {
     /// Failed to deserialize data to struct (in GET or POST response).
     DeserializeParseError(serde_json::Error, String),
 
+    /// Failed to deserialize data to struct from simd_json crate (in GET or POST response).
+    DeserializeParseSimdJsonError(simd_json::Error, String),
+
     /// Failed to make the outgoing request.
     RequestError,
 
@@ -131,6 +134,9 @@ impl fmt::Display for Error {
             Error::SerializeParseError(_) => "Failed to serialize struct to JSON (in POST)",
             Error::DeserializeParseError(_, _) => {
                 "Failed to deserialize data to struct (in GET or POST)"
+            }
+            Error::DeserializeParseSimdJsonError(_, _) => {
+                "Failed to deserialize data to struct by simd_json crate (in GET or POST)"
             }
             Error::RequestError => "Failed to make the outgoing request",
             Error::HyperError(_) => "Failed to make the outgoing request due to Hyper error",
@@ -317,7 +323,7 @@ impl RestClient {
         &self.response_headers
     }
 
-    /// Make a GET request.
+    /// Make a GET request
     pub async fn get<U, T>(&mut self, params: U) -> Result<T, Error>
     where
         T: serde::de::DeserializeOwned + RestPath<U>,
@@ -327,16 +333,13 @@ impl RestClient {
         #[cfg(feature = "lib-serde-json")]
         {
             let body = self.run_request(req).await?;
-            let _parsed = serde_json::from_str(body.as_str()).map_err(|err| Error::DeserializeParseError(err, body));
-            return _parsed;
+            serde_json::from_str(body.as_str()).map_err(|err| Error::DeserializeParseError(err, body))
         }
 
         #[cfg(feature = "lib-simd-json")]
         {
             let mut body = self.run_request(req).await?;
-            let _parsed = simd_json::serde::from_str(&mut body);
-            let result: Result<T, Error> = Ok(_parsed.unwrap());
-            result
+            simd_json::serde::from_str(&mut body).map_err(|err| Error::DeserializeParseSimdJsonError(err, body))
         }
     }
 
