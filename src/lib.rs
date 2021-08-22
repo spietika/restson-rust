@@ -93,6 +93,7 @@ pub enum Error {
     DeserializeParseError(serde_json::Error, String),
 
     /// Failed to deserialize data to struct from simd_json crate (in GET or POST response).
+    #[cfg(feature = "lib-simd-json")]
     DeserializeParseSimdJsonError(simd_json::Error, String),
 
     /// Failed to make the outgoing request.
@@ -135,6 +136,7 @@ impl fmt::Display for Error {
             Error::DeserializeParseError(_, _) => {
                 "Failed to deserialize data to struct (in GET or POST)"
             }
+            #[cfg(feature = "lib-simd-json")]
             Error::DeserializeParseSimdJsonError(_, _) => {
                 "Failed to deserialize data to struct by simd_json crate (in GET or POST)"
             }
