@@ -113,12 +113,27 @@ fn request_timeout() {
 }
 
 #[test]
+#[cfg(feature = "lib-serde-json")]
 fn deserialize_error() {
     let mut client = RestClient::new_blocking("http://httpbin.org").unwrap();
 
     // Service returns decoded base64 in body which should be string 'test'.
     // This fails JSON deserialization and is returned in the Error
     if let Err(Error::DeserializeParseError(_, data)) =
+        client.get::<String, HttpBinBase64>("dGVzdA==".to_string())
+    {
+        assert!(data == "test");
+    } else {
+        panic!("expected serialized error");
+    }
+}
+
+#[test]
+#[cfg(feature = "lib-simd-json")]
+fn deserialize_error() {
+    let mut client = RestClient::new_blocking("http://httpbin.org").unwrap();
+
+    if let Err(Error::DeserializeParseSimdJsonError(_, data)) =
         client.get::<String, HttpBinBase64>("dGVzdA==".to_string())
     {
         assert!(data == "test");

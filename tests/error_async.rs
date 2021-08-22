@@ -105,12 +105,27 @@ async fn request_timeout() {
 }
 
 #[tokio::test]
+#[cfg(feature = "lib-serde-json")]
 async fn deserialize_error() {
     let mut client = RestClient::new("http://httpbin.org").unwrap();
 
     // Service returns decoded base64 in body which should be string 'test'.
     // This fails JSON deserialization and is returned in the Error
     if let Err(Error::DeserializeParseError(_, data)) =
+        client.get::<String, HttpBinBase64>("dGVzdA==".to_string()).await
+    {
+        assert!(data == "test");
+    } else {
+        panic!("expected serialized error");
+    }
+}
+
+#[tokio::test]
+#[cfg(feature = "lib-simd-json")]
+async fn deserialize_error() {
+    let mut client = RestClient::new("http://httpbin.org").unwrap();
+
+    if let Err(Error::DeserializeParseSimdJsonError(_, data)) =
         client.get::<String, HttpBinBase64>("dGVzdA==".to_string()).await
     {
         assert!(data == "test");
