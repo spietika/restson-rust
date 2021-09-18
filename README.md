@@ -3,7 +3,7 @@
 
 # Restson Rust
 
-Easy-to-use REST client for Rust programming language that provides automatic serialization and deserialization from Rust structs. The library is implemented using [Hyper](https://github.com/hyperium/hyper) and [Serde JSON](https://github.com/serde-rs/json).
+Easy-to-use REST client for Rust programming language that provides automatic serialization and deserialization from Rust structs. Provides async interface and an easy wrapper for synchronous calls. The library is implemented using [Hyper](https://github.com/hyperium/hyper) and [Serde JSON](https://github.com/serde-rs/json).
 
 ## Getting started
 
@@ -11,11 +11,23 @@ Add the following lines to your project `Cargo.toml` file:
 
 ```toml
 [dependencies]
-restson = "^0.7"
+restson = "^1.0"
 serde = "^1.0"
 serde_derive = "^1.0"
 ```
 This adds dependencies for the Restson library and also for Serde which is needed to derive `Serialize` and `Deserialize` for user defined data structures.
+
+### Features
+
+| Feature        | Description | Default |
+|:---------------|:---|:---|
+| blocking       | This option enables support for sync, blocking, client. When only async is used this can be disabled to remove unnecessary dependencies. | Yes |
+| lib-serde-json | This option enables Serde JSON parser for GET requests. Alternative for lib-simd-json. | Yes |
+| lib-simd-json  | This option enables JSON parsing with simd-json for GET requests. This option can improve parsing performance if SIMD is supported on the target hardware. Alternative for lib-serde-json. | No |
+
+### Migration to v1.0
+
+The version 1.0 adds new features that change the main interface of the client, most notably async support. To migrate existing code from 0.x versions, the `RestClient` creation needs to be updated. `RestClient::new_blocking` or `RestClient::builder().blocking("http://httpbin.org")` should be used to create synchronous client.
 
 ### Data structures
 
@@ -63,16 +75,25 @@ impl RestPath<u32> for HttpBinAnything {
 
 ### Requests
 
-To run requests the client instance needs to be created first. The base URL of the resource is given as parameter:
+To run requests a client instance needs to be created first. The client can be created as asynchronous which can be used with Rust async/await system or as synchronous that will block until the HTTP request has been finished and directly returns the value. The base URL of the resource is given as parameter.
 ```rust
-let mut client = RestClient::new("http://httpbin.org").unwrap();
+// async client
+let mut async_client = RestClient::new("http://httpbin.org").unwrap();
+
+// sync client
+let mut client = RestClient::new_blocking("http://httpbin.org").unwrap();
 ```
 
 This creates a client instance with default configuration. To configure the client, it is created with a `Builder`
 
 ```rust
-let mut client = RestClient::builder().dns_workers(1)
+// async client
+let mut async_client = RestClient::builder().dns_workers(1)
         .build("http://httpbin.org").unwrap();
+
+// sync client
+let mut client = RestClient::builder().dns_workers(1)
+        .blocking("http://httpbin.org").unwrap();
 ```
 
 **GET**
@@ -142,7 +163,7 @@ The `delete` function does not return any data (only possible error) so the type
 
 ```rust
 // DELETE request to http://httpbin.org/delete
-let mut client = RestClient::new("http://httpbin.org").unwrap();
+let mut client = RestClient::new_blocking("http://httpbin.org").unwrap();
 client.delete::<(), HttpBinDelete>(()).unwrap();
 ```
 
@@ -171,7 +192,7 @@ impl RestPath<()> for Products {
 }
 
 pub fn products(&self) -> Vec<Product> {
-    let mut client = RestClient::new("http://localhost:8080").unwrap();
+    let mut client = RestClient::new_blocking("http://localhost:8080").unwrap();
     client.get::<_, Products>(()).unwrap().0
 }
 ```
