@@ -203,7 +203,11 @@ It is possible to use relative paths in the base URL to avoid having to return v
 
 ### Body wash
 
-For some APIs it is necessary to remove magic values or otherwise clean/process the returned response before it is deserialized. It is possible to provide a custom processing function with `set_body_wash_fn()` which is called with the raw returned body before passing it to the deserialization step. 
+For some APIs it is necessary to remove magic values or otherwise clean/process the returned response before it is deserialized. It is possible to provide a custom processing function with `set_body_wash_fn()` which is called with the raw returned body before passing it to the deserialization step.
+
+### Request headers
+
+Custom headers can be added to requests by using `set_headers()`. The headers are added to all subsequent GET and POST requests until they are cleared with `clear_headers()` call.
 
 ### Logging
 The library uses the `log` crate to provide debug and trace logs. These logs allow to easily see both outgoing requests as well as incoming responses from the server. See the [log crate documentation](https://docs.rs/log/*/log/) for details.
