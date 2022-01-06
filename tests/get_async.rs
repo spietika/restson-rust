@@ -75,6 +75,21 @@ async fn get_path_param() {
 }
 
 #[tokio::test]
+async fn get_concurrent() {
+    let client = RestClient::new("https://httpbin.org").unwrap();
+
+    let (data1, data2, data3) = tokio::try_join!(
+        client.get::<_, HttpBinAnything>(1),
+        client.get::<_, HttpBinAnything>(2),
+        client.get::<_, HttpBinAnything>(3)
+    ).unwrap();
+
+    assert_eq!(data1.url, "https://httpbin.org/anything/1");
+    assert_eq!(data2.url, "https://httpbin.org/anything/2");
+    assert_eq!(data3.url, "https://httpbin.org/anything/3");
+}
+
+#[tokio::test]
 async fn get_multi_path_param() {
     let client = RestClient::new("https://httpbin.org").unwrap();
 
