@@ -88,10 +88,21 @@ impl<T> Response<T> {
 impl Response<String> {
     /// Parse a response body
     fn parse<T: serde::de::DeserializeOwned>(self) -> Result<Response<T>, Error> {
-        let Self { body, headers } = self;
-        serde_json::from_str(&body)
-            .map(|body| Response { body, headers })
-            .map_err(|err| Error::DeserializeParseError(err, body))
+        #[cfg(feature = "lib-serde-json")]
+        {
+            let Self { body, headers } = self;
+            serde_json::from_str(&body)
+                .map(|body| Response { body, headers })
+                .map_err(|err| Error::DeserializeParseError(err, body))
+        }
+
+        #[cfg(feature = "lib-simd-json")]
+        {
+            let Self { mut body, headers } = self;
+            simd_json::serde::from_str(&mut body)
+                .map(|body| Response { body, headers })
+                .map_err(|err| Error::DeserializeParseSimdJsonError(err, body))
+        }
     }
 }
 
