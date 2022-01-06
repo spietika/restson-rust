@@ -131,7 +131,7 @@ fn deserialize_error() {
 #[test]
 #[cfg(feature = "lib-simd-json")]
 fn deserialize_error() {
-    let mut client = RestClient::new_blocking("http://httpbin.org").unwrap();
+    let client = RestClient::new_blocking("http://httpbin.org").unwrap();
 
     if let Err(Error::DeserializeParseSimdJsonError(_, data)) =
         client.get::<String, HttpBinBase64>("dGVzdA==".to_string())

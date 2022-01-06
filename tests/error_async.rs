@@ -123,7 +123,7 @@ async fn deserialize_error() {
 #[tokio::test]
 #[cfg(feature = "lib-simd-json")]
 async fn deserialize_error() {
-    let mut client = RestClient::new("http://httpbin.org").unwrap();
+    let client = RestClient::new("http://httpbin.org").unwrap();
 
     if let Err(Error::DeserializeParseSimdJsonError(_, data)) =
         client.get::<String, HttpBinBase64>("dGVzdA==".to_string()).await
