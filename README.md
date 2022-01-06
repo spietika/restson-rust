@@ -25,10 +25,6 @@ This adds dependencies for the Restson library and also for Serde which is neede
 | lib-serde-json | This option enables Serde JSON parser for GET requests. Alternative for lib-simd-json. | Yes |
 | lib-simd-json  | This option enables JSON parsing with simd-json for GET requests. This option can improve parsing performance if SIMD is supported on the target hardware. Alternative for lib-serde-json. | No |
 
-### Migration to v1.0
-
-The version 1.0 adds new features that change the main interface of the client, most notably async support. To migrate existing code from 0.x versions, the `RestClient` creation needs to be updated. `RestClient::new_blocking` or `RestClient::builder().blocking("http://httpbin.org")` should be used to create synchronous client.
-
 ### Data structures
 
 Next, the data structures for the REST interface should be defined. The struct fields need to match with the API JSON fields. The whole JSON does not need to be defined, the struct can also contain a subset of the fields. Structs that are used with `GET` should derive `Deserialize` and structs that are used with `POST` should derive `Serialize`.
@@ -55,11 +51,11 @@ struct HttpBinAnything {
 
 These definitions allow to automatically serialize/deserialize the data structures to/from JSON when requests are processed. For more complex scenarios, see the Serde [examples](https://serde.rs/examples.html).
 
-### Rest paths
+### REST paths
 
 In Restson library the API resource paths are associated with types. That is, the URL is constructed automatically and not given as parameter to requests. This allows to easily parametrize the paths without manual URL processing and reduces URL literals in the code.
 
-Each type that is used with `get`/`post` needs to implement `RestPath` trait. The trait can be implemented multiple times with different generic parameters for the same type as shown below. The `get_path` can also return error to indicate that the parameters were not valid. This error is propagated directly to the client caller.
+Each type that is used with REST requests needs to implement `RestPath` trait. The trait can be implemented multiple times with different generic parameters for the same type as shown below. The `get_path` can also return error to indicate that the parameters were not valid. This error is propagated directly to the client caller.
 
 ```rust
 // plain API call without parameters
@@ -78,43 +74,43 @@ impl RestPath<u32> for HttpBinAnything {
 To run requests a client instance needs to be created first. The client can be created as asynchronous which can be used with Rust async/await system or as synchronous that will block until the HTTP request has been finished and directly returns the value. The base URL of the resource is given as parameter.
 ```rust
 // async client
-let mut async_client = RestClient::new("http://httpbin.org").unwrap();
+let async_client = RestClient::new("http://httpbin.org").unwrap();
 
 // sync client
-let mut client = RestClient::new_blocking("http://httpbin.org").unwrap();
+let client = RestClient::new_blocking("http://httpbin.org").unwrap();
 ```
 
 This creates a client instance with default configuration. To configure the client, it is created with a `Builder`
 
 ```rust
 // async client
-let mut async_client = RestClient::builder().dns_workers(1)
+let async_client = RestClient::builder().dns_workers(1)
         .build("http://httpbin.org").unwrap();
 
 // sync client
-let mut client = RestClient::builder().dns_workers(1)
+let client = RestClient::builder().dns_workers(1)
         .blocking("http://httpbin.org").unwrap();
 ```
 
 **GET**
 
 The following snippet shows an example `GET` request:
-```rust
-// Gets https://httpbin.org/anything/1234 and deserializes the JSON to data variable
-let data: HttpBinAnything = client.get(1234).unwrap();
-```
-The `get` and `post` functions call the `get_path` function automatically from `RestPath` based on the parameter type to construct the URL. If the compiler is able to infer the parameter and return value types from the context (as shown above), they do not need to be annotated. The call above is equivalent with:
 
 ```rust
-let data = client.get::<u32, HttpBinAnything>(1234).unwrap();
+// Gets https://httpbin.org/anything/1234 and deserializes the JSON to data variable
+// (data is struct HttpBinAnything)
+let data = client.get::<_, HttpBinAnything>(1234).unwrap();
 ```
+
+The request functions call the `get_path` automatically from `RestPath` to construct the URL from the given parameter. The type of the URL parameter (`_` above, compiler infers the correct type) and returned data (`HttpBinAnything`) are annotated in the request.
+
 Restson also provides `get_with` function which is similar to the basic `get` but it also accepts additional query parameters that are added to the request URL.
 ```rust
 // Gets http://httpbin.org/anything/1234?a=2&b=abcd
 let query = vec![("a","2"), ("b","abcd")];
-let data: HttpBinAnything = client.get_with(1234, &query).unwrap();
+let data = client.get_with::<_, HttpBinAnything>((), &query).unwrap();
 ```
-Both GET interfaces return `Result<T, Error>` where T is the target type in which the returned JSON is deserialized to.
+Both GET interfaces return `Result<Response<T>, Error>` where T is the target type in which the returned JSON is deserialized to. 
 
 **POST**
 
@@ -134,11 +130,11 @@ let data = HttpBinPost { data: String::from("test data")};
 // Posts data to http://httpbin.org/post
 client.post((), &data).unwrap();
 ```
-In addition to the basic `post` interface, it is also possible to provide query parameters with `post_with` function. Also, `post_capture` and `post_capture_with` interfaces allow to capture and deserialize the message body returned by the server in the POST request.
+In addition to the basic `post` interface, it is also possible to provide query parameters with `post_with` function. Also, `post_capture` and `post_capture_with` interfaces allow to capture and deserialize the message body returned by the server in the POST request (capture requests need type-annotation in the call).
 
 **PUT**
 
-HTTP PUT requests are also supported and the interface is similar to POST interface: `put`, `put_with`, `put_capture` and `put_capture_with` functions are available.
+HTTP PUT requests are also supported and the interface is similar to POST interface: `put`, `put_with`, `put_capture` and `put_capture_with` functions are available (capture requests need type-annotation in the call).
 
 **PATCH**
 
@@ -163,8 +159,23 @@ The `delete` function does not return any data (only possible error) so the type
 
 ```rust
 // DELETE request to http://httpbin.org/delete
-let mut client = RestClient::new_blocking("http://httpbin.org").unwrap();
+let client = RestClient::new_blocking("http://httpbin.org").unwrap();
 client.delete::<(), HttpBinDelete>(()).unwrap();
+```
+
+### Concurrent requests
+
+When using the async client, it is possible to run multiple requests concurrently as shown below:
+
+```rust
+let client = RestClient::new("https://httpbin.org").unwrap();
+
+// all three GET requests are done concurrently, and then joined
+let (data1, data2, data3) = tokio::try_join!(
+    client.get::<_, HttpBinAnything>(1),
+    client.get::<_, HttpBinAnything>(2),
+    client.get::<_, HttpBinAnything>(3)
+).unwrap();
 ```
 
 ### JSON with array root element
@@ -192,7 +203,7 @@ impl RestPath<()> for Products {
 }
 
 pub fn products(&self) -> Vec<Product> {
-    let mut client = RestClient::new_blocking("http://localhost:8080").unwrap();
+    let client = RestClient::new_blocking("http://localhost:8080").unwrap();
     client.get::<_, Products>(()).unwrap().0
 }
 ```
@@ -214,6 +225,16 @@ The library uses the `log` crate to provide debug and trace logs. These logs all
 
 ### Examples
 For more examples see *tests* directory. 
+
+## Migrations
+
+### Migration to v1.0
+
+The version 1.0 adds new features that change the main interface of the client, most notably async support. To migrate existing code from 0.x versions, the `RestClient` creation needs to be updated. `RestClient::new_blocking` or `RestClient::builder().blocking("http://httpbin.org")` should be used to create synchronous client.
+
+### Migration to v1.2
+
+The version 1.2 allows to use immutable client for requests. This has benefits such as allowing concurrent requests. However, this also changes how the server response is returned, and now all `get` requests (and other requests that capture data) need to be type-annotated. For example, previously `let data: HttpBinAnything = client.get(1234).unwrap();` was allowed, but now it has to be written as `let data = client.get::<_, HttpBinAnything>(1234).unwrap();`.
 
 ## License
 
