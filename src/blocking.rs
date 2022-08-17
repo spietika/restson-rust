@@ -2,16 +2,23 @@
 
 use crate::{Error, Query, Response, RestClient as AsyncRestClient, RestPath};
 use hyper::header::HeaderValue;
-use std::time::Duration;
+use std::{convert::TryFrom, time::Duration};
+use tokio::runtime::{Builder, Runtime};
 
 /// REST client to make HTTP GET and POST requests. Blocking version.
 pub struct RestClient {
     inner_client: AsyncRestClient,
+    runtime: Runtime,
 }
 
-impl From<AsyncRestClient> for RestClient {
-    fn from(other: AsyncRestClient) -> Self {
-        Self { inner_client: other }
+impl TryFrom<AsyncRestClient> for RestClient {
+    type Error = Error;
+
+    fn try_from(other: AsyncRestClient) -> Result<Self, Self::Error> {
+        match Builder::new_current_thread().enable_all().build() {
+            Ok(runtime) => Ok(Self { inner_client: other, runtime }),
+            Err(e) => Err(Error::IoError(e)),
+        }
     }
 }
 
@@ -56,110 +63,98 @@ impl RestClient {
     }
 
     /// Make a GET request.
-    #[tokio::main(flavor = "current_thread")]
-    pub async fn get<U, T>(&self, params: U) -> Result<Response<T>, Error>
+    pub fn get<U, T>(&self, params: U) -> Result<Response<T>, Error>
     where
         T: serde::de::DeserializeOwned + RestPath<U>,
     {
-        self.inner_client.get(params).await
+        self.runtime.block_on(self.inner_client.get(params))
     }
 
     /// Make a GET request with query parameters.
-    #[tokio::main(flavor = "current_thread")]
-    pub async fn get_with<U, T>(&self, params: U, query: &Query<'_>) -> Result<Response<T>, Error>
+    pub fn get_with<U, T>(&self, params: U, query: &Query<'_>) -> Result<Response<T>, Error>
     where
         T: serde::de::DeserializeOwned + RestPath<U>,
     {
-        self.inner_client.get_with(params, query).await
+        self.runtime.block_on(self.inner_client.get_with(params, query))
     }
 
     /// Make a POST request.
-    #[tokio::main(flavor = "current_thread")]
-    pub async fn post<U, T>(&self, params: U, data: &T) -> Result<Response<()>, Error>
+    pub fn post<U, T>(&self, params: U, data: &T) -> Result<Response<()>, Error>
     where
         T: serde::Serialize + RestPath<U>,
     {
-        self.inner_client.post(params, data).await
+        self.runtime.block_on(self.inner_client.post(params, data))
     }
 
     /// Make a PUT request.
-    #[tokio::main(flavor = "current_thread")]
-    pub async fn put<U, T>(&self, params: U, data: &T) -> Result<Response<()>, Error>
+    pub fn put<U, T>(&self, params: U, data: &T) -> Result<Response<()>, Error>
     where
         T: serde::Serialize + RestPath<U>,
     {
-        self.inner_client.put(params, data).await
+        self.runtime.block_on(self.inner_client.put(params, data))
     }
 
     /// Make a PATCH request.
-    #[tokio::main(flavor = "current_thread")]
-    pub async fn patch<U, T>(&self, params: U, data: &T) -> Result<Response<()>, Error>
+    pub fn patch<U, T>(&self, params: U, data: &T) -> Result<Response<()>, Error>
     where
         T: serde::Serialize + RestPath<U>,
     {
-        self.inner_client.patch(params, data).await
+        self.runtime.block_on(self.inner_client.patch(params, data))
     }
 
     /// Make POST request with query parameters.
-    #[tokio::main(flavor = "current_thread")]
-    pub async fn post_with<U, T>(&self, params: U, data: &T, query: &Query<'_>) -> Result<Response<()>, Error>
+    pub fn post_with<U, T>(&self, params: U, data: &T, query: &Query<'_>) -> Result<Response<()>, Error>
     where
         T: serde::Serialize + RestPath<U>,
     {
-        self.inner_client.post_with(params, data, query).await
+        self.runtime.block_on(self.inner_client.post_with(params, data, query))
     }
 
     /// Make PUT request with query parameters.
-    #[tokio::main(flavor = "current_thread")]
-    pub async fn put_with<U, T>(&self, params: U, data: &T, query: &Query<'_>) -> Result<Response<()>, Error>
+    pub fn put_with<U, T>(&self, params: U, data: &T, query: &Query<'_>) -> Result<Response<()>, Error>
     where
         T: serde::Serialize + RestPath<U>,
     {
-        self.inner_client.put_with(params, data, query).await
+        self.runtime.block_on(self.inner_client.put_with(params, data, query))
     }
 
     /// Make PATCH request with query parameters.
-    #[tokio::main(flavor = "current_thread")]
-    pub async fn patch_with<U, T>(&self, params: U, data: &T, query: &Query<'_>) -> Result<Response<()>, Error>
+    pub fn patch_with<U, T>(&self, params: U, data: &T, query: &Query<'_>) -> Result<Response<()>, Error>
     where
         T: serde::Serialize + RestPath<U>,
     {
-        self.inner_client.patch_with(params, data, query).await
+        self.runtime.block_on(self.inner_client.patch_with(params, data, query))
     }
 
     /// Make a POST request and capture returned body.
-    #[tokio::main(flavor = "current_thread")]
-    pub async fn post_capture<U, T, K>(&self, params: U, data: &T) -> Result<Response<K>, Error>
+    pub fn post_capture<U, T, K>(&self, params: U, data: &T) -> Result<Response<K>, Error>
     where
         T: serde::Serialize + RestPath<U>,
         K: serde::de::DeserializeOwned,
     {
-        self.inner_client.post_capture(params, data).await
+        self.runtime.block_on(self.inner_client.post_capture(params, data))
     }
 
     /// Make a PUT request and capture returned body.
-    #[tokio::main(flavor = "current_thread")]
-    pub async fn put_capture<U, T, K>(&self, params: U, data: &T) -> Result<Response<K>, Error>
+    pub fn put_capture<U, T, K>(&self, params: U, data: &T) -> Result<Response<K>, Error>
     where
         T: serde::Serialize + RestPath<U>,
         K: serde::de::DeserializeOwned,
     {
-        self.inner_client.put_capture(params, data).await
+        self.runtime.block_on(self.inner_client.put_capture(params, data))
     }
 
     /// Make a PATCH request and capture returned body.
-    #[tokio::main(flavor = "current_thread")]
-    pub async fn patch_capture<U, T, K>(&self, params: U, data: &T) -> Result<Response<K>, Error>
+    pub fn patch_capture<U, T, K>(&self, params: U, data: &T) -> Result<Response<K>, Error>
     where
         T: serde::Serialize + RestPath<U>,
         K: serde::de::DeserializeOwned,
     {
-        self.inner_client.patch_capture(params, data).await
+        self.runtime.block_on(self.inner_client.patch_capture(params, data))
     }
 
     /// Make a POST request with query parameters and capture returned body.
-    #[tokio::main(flavor = "current_thread")]
-    pub async fn post_capture_with<U, T, K>(
+    pub fn post_capture_with<U, T, K>(
         &self,
         params: U,
         data: &T,
@@ -169,12 +164,11 @@ impl RestClient {
         T: serde::Serialize + RestPath<U>,
         K: serde::de::DeserializeOwned,
     {
-        self.inner_client.post_capture_with(params, data, query).await
+        self.runtime.block_on(self.inner_client.post_capture_with(params, data, query))
     }
 
     /// Make a PUT request with query parameters and capture returned body.
-    #[tokio::main(flavor = "current_thread")]
-    pub async fn put_capture_with<U, T, K>(
+    pub fn put_capture_with<U, T, K>(
         &self,
         params: U,
         data: &T,
@@ -184,12 +178,11 @@ impl RestClient {
         T: serde::Serialize + RestPath<U>,
         K: serde::de::DeserializeOwned,
     {
-        self.inner_client.put_capture_with(params, data, query).await
+        self.runtime.block_on(self.inner_client.put_capture_with(params, data, query))
     }
 
     /// Make a PATCH request with query parameters and capture returned body.
-    #[tokio::main(flavor = "current_thread")]
-    pub async fn patch_capture_with<U, T, K>(
+    pub fn patch_capture_with<U, T, K>(
         &self,
         params: U,
         data: &T,
@@ -199,24 +192,22 @@ impl RestClient {
         T: serde::Serialize + RestPath<U>,
         K: serde::de::DeserializeOwned,
     {
-        self.inner_client.patch_capture_with(params, data, query).await
+        self.runtime.block_on(self.inner_client.patch_capture_with(params, data, query))
     }
 
     /// Make a DELETE request.
-    #[tokio::main(flavor = "current_thread")]
-    pub async fn delete<U, T>(&self, params: U) -> Result<Response<()>, Error>
+    pub fn delete<U, T>(&self, params: U) -> Result<Response<()>, Error>
     where
         T: RestPath<U>,
     {
-        self.inner_client.delete::<U, T>(params).await
+        self.runtime.block_on(self.inner_client.delete::<U, T>(params))
     }
 
     /// Make a DELETE request with query and body.
-    #[tokio::main(flavor = "current_thread")]
-    pub async fn delete_with<U, T>(&self, params: U, data: &T, query: &Query<'_>) -> Result<Response<()>, Error>
+    pub fn delete_with<U, T>(&self, params: U, data: &T, query: &Query<'_>) -> Result<Response<()>, Error>
     where
         T: serde::Serialize + RestPath<U>,
     {
-        self.inner_client.delete_with(params, data, query).await
+        self.runtime.block_on(self.inner_client.delete_with(params, data, query))
     }
 }

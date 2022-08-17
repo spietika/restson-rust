@@ -277,7 +277,7 @@ impl Builder {
     /// Create [`blocking::RestClient`](blocking/struct.RestClient.html) with the configuration in
     /// this builder
     pub fn blocking(self, url: &str) -> Result<blocking::RestClient, Error> {
-        RestClient::with_builder(url, self).map(|client| client.into())
+        RestClient::with_builder(url, self).and_then(|client| client.try_into())
     }
 }
 
@@ -306,7 +306,7 @@ impl RestClient {
     /// Use `Builder` to configure the client.
     #[cfg(feature = "blocking")]
     pub fn new_blocking(url: &str) -> Result<blocking::RestClient, Error> {
-        RestClient::new(url).map(|client| client.into())
+        RestClient::new(url).and_then(|client| client.try_into())
     }
 
     fn with_builder(url: &str, builder: Builder) -> Result<RestClient, Error> {
