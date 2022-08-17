@@ -483,6 +483,15 @@ impl RestClient {
         self.post_or_put_capture(Method::PUT, params, data).await
     }
 
+    /// Make a PATCH request and capture returned body.
+    pub async fn patch_capture<U, T, K>(&self, params: U, data: &T) -> Result<Response<K>, Error>
+    where
+        T: serde::Serialize + RestPath<U>,
+        K: serde::de::DeserializeOwned,
+    {
+        self.post_or_put_capture(Method::PATCH, params, data).await
+    }
+
     async fn post_or_put_capture<U, T, K>(
         &self,
         method: Method,
@@ -526,6 +535,20 @@ impl RestClient {
         K: serde::de::DeserializeOwned,
     {
         self.post_or_put_capture_with(Method::PUT, params, data, query).await
+    }
+
+    /// Make a PATCH request with query parameters and capture returned body.
+    pub async fn patch_capture_with<U, T, K>(
+        &self,
+        params: U,
+        data: &T,
+        query: &Query<'_>,
+    ) -> Result<Response<K>, Error>
+    where
+        T: serde::Serialize + RestPath<U>,
+        K: serde::de::DeserializeOwned,
+    {
+        self.post_or_put_capture_with(Method::PATCH, params, data, query).await
     }
 
     async fn post_or_put_capture_with<U, T, K>(
