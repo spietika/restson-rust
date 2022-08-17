@@ -8,7 +8,7 @@ keywords = ["rest", "client", "http", "json", "async"]
 categories = ["network-programming", "web-programming::http-client"]
 readme = "README.md"
 license = "MIT"
-edition = "2018"
+edition = "2021"
 
 [dependencies]
 hyper = { version = "0.14", features = ["client", "http1", "http2"] }
@@ -28,6 +28,6 @@ tokio = { version = "1", features = ["macros"] }
 
 [features]
 default = ["blocking", "lib-serde-json"]
-blocking = ["tokio/macros"]
+blocking = []
 lib-serde-json = ["serde", "serde_json"]
 lib-simd-json = ["serde", "simd-json", "serde_json"]
