@@ -197,8 +197,13 @@ impl fmt::Display for Error {
         };
         fmt.write_str(desc)?;
         match *self {
-            Error::SerializeParseError(ref err) => write!(fmt, ": {}", err),
-            Error::DeserializeParseError(ref err, _) => write!(fmt, ": {}", err),
+            Error::SerializeParseError(ref err) => write!(fmt, ": {err}"),
+            Error::DeserializeParseError(ref err, _) => write!(fmt, ": {err}"),
+            #[cfg(feature = "lib-simd-json")]
+            Error::DeserializeParseSimdJsonError(ref err, _) => write!(fmt, ": {err}"),
+            Error::HyperError(ref err) => write!(fmt, ": {err}"),
+            Error::IoError(ref err) => write!(fmt, ": {err}"),
+            Error::HttpError(status, ref body) => write!(fmt, ": HTTP status {status}: {body}"),
             _ => Ok(()),
         }
     }
@@ -209,6 +214,9 @@ impl error::Error for Error {
         match *self {
             Error::SerializeParseError(ref err) => Some(err),
             Error::DeserializeParseError(ref err, _) => Some(err),
+            Error::HyperError(ref err) => Some(err),
+            #[cfg(feature = "lib-simd-json")]
+            Error::DeserializeParseSimdJsonError(ref err, _) => Some(err),
             _ => None,
         }
     }
