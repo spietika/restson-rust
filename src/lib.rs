@@ -616,12 +616,11 @@ impl RestClient {
             Ok::<_, hyper::Error>((response_headers, body.to_string(), status))
         };
 
-        let res;
-        if duration != Duration::from_secs(std::u64::MAX) {
-            res = timeout(duration, work).await??;
+        let res = if duration != Duration::from_secs(std::u64::MAX) {
+            timeout(duration, work).await??
         } else {
-            res = work.await?;
-        }
+            work.await?
+        };
 
         let (response_headers, body, status) = res;
 
