@@ -12,7 +12,8 @@ edition = "2021"
 
 [dependencies]
 hyper = { version = "0.14", features = ["client", "http1", "http2"] }
-hyper-tls = "0.5"
+hyper-tls = { version = "0.5", optional = true }
+hyper-rustls = { version = "0.24", features = ["http2"], optional = true }
 futures = "^0.3"
 tokio = { version = "1", features = ["time"] }
 serde = { version = "^1.0", features = ["derive"], optional = true }
@@ -27,7 +28,9 @@ serde_derive = "^1.0"
 tokio = { version = "1", features = ["macros"] }
 
 [features]
-default = ["blocking", "lib-serde-json"]
+default = ["blocking", "lib-serde-json", "native-tls"]
 blocking = []
 lib-serde-json = ["serde", "serde_json"]
 lib-simd-json = ["serde", "simd-json", "serde_json"]
+native-tls = ["hyper-tls"]
+rustls = ["hyper-rustls"]

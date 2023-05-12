@@ -24,6 +24,8 @@ This adds dependencies for the Restson library and also for Serde which is neede
 | blocking       | This option enables support for sync, blocking, client. When only async is used this can be disabled to remove unnecessary dependencies. | Yes |
 | lib-serde-json | This option enables Serde JSON parser for GET requests. Alternative for lib-simd-json. | Yes |
 | lib-simd-json  | This option enables JSON parsing with simd-json for GET requests. This option can improve parsing performance if SIMD is supported on the target hardware. Alternative for lib-serde-json. | No |
+| native-tls     | This option selects `native_tls` as TLS provider. Alternative for `rustls`. | Yes |
+| rustls         | This option selects `rustls` as TLS provider. Alternative for `native-tls`. | No |
 
 ### Data structures
 

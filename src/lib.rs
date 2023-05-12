@@ -39,12 +39,16 @@ use tokio::time::timeout;
 use hyper::header::*;
 use hyper::body::Buf;
 use hyper::{Client, Method, Request};
-use hyper_tls::HttpsConnector;
 use log::{debug, trace, error};
 use std::{error, fmt};
 use std::ops::Deref;
 use std::time::Duration;
 use url::Url;
+
+#[cfg(feature = "native-tls")]
+use hyper_tls::HttpsConnector;
+#[cfg(feature = "rustls")]
+use hyper_rustls::{HttpsConnector, HttpsConnectorBuilder};
 
 #[cfg(feature = "blocking")]
 pub mod blocking;
@@ -309,11 +313,28 @@ impl RestClient {
         RestClient::new(url).and_then(|client| client.try_into())
     }
 
+    #[cfg(feature = "native-tls")]
+    fn build_client() -> HyperClient
+    {
+        Client::builder().build(HttpsConnector::new())
+    }
+
+    #[cfg(feature = "rustls")]
+    fn build_client() -> HyperClient
+    {
+        let connector = HttpsConnectorBuilder::new()
+            .with_native_roots()
+            .https_or_http()
+            .enable_all_versions()
+            .build();
+        Client::builder().build(connector)
+    }
+
     fn with_builder(url: &str, builder: Builder) -> Result<RestClient, Error> {
         let client = match builder.client {
             Some(client) => client,
             None => {
-                Client::builder().build(HttpsConnector::new())
+                Self::build_client()
             }
         };
 
