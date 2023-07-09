@@ -39,6 +39,8 @@ use tokio::time::timeout;
 use hyper::header::*;
 use hyper::body::Buf;
 use hyper::{Client, Method, Request};
+use hyper::service::Service;
+use hyper::client::connect::{dns, HttpConnector};
 use log::{debug, trace, error};
 use std::{error, fmt};
 use std::ops::Deref;
@@ -68,7 +70,7 @@ static VERSION: &str = env!("CARGO_PKG_VERSION");
 /// would be parsed to **param1=1234&param2=abcd** in the request URL.
 pub type Query<'a> = [(&'a str, &'a str)];
 
-pub type HyperClient = Client<HttpsConnector<hyper::client::HttpConnector>>;
+pub type HyperClient<R> = Client<HttpsConnector<HttpConnector<R>>>;
 
 /// Type returned by client query functions
 #[derive(Debug)]
@@ -95,7 +97,7 @@ impl Response<String> {
         #[cfg(feature = "lib-serde-json")]
         {
             let Self { body, headers } = self;
-            serde_json::from_str(&body)
+            serde_json::from_str::<T>(&body)
                 .map(|body| Response { body, headers })
                 .map_err(|err| Error::DeserializeParseError(err, body))
         }
@@ -119,8 +121,8 @@ impl<T> Deref for Response<T> {
 }
 
 /// REST client to make HTTP GET and POST requests.
-pub struct RestClient {
-    client: HyperClient,
+pub struct RestClient<R = dns::GaiResolver> {
+    client: HyperClient<R>,
     baseurl: url::Url,
     auth: Option<String>,
     headers: HeaderMap,
@@ -168,7 +170,7 @@ pub enum Error {
 }
 
 /// Builder for `RestClient`
-pub struct Builder {
+pub struct Builder<R = dns::GaiResolver> {
     /// Request timeout
     timeout: Duration,
 
@@ -176,7 +178,7 @@ pub struct Builder {
     send_null_body: bool,
 
     /// Hyper client to use for the connection
-    client: Option<HyperClient>,
+    client: Option<HyperClient<R>>,
 }
 
 impl fmt::Display for Error {
@@ -238,7 +240,7 @@ impl std::convert::From<tokio::time::error::Elapsed> for Error {
     }
 }
 
-impl Default for Builder {
+impl<R: Service<dns::Name> + Clone> Default for Builder<R> {
     fn default() -> Self {
         Self {
             timeout: Duration::from_secs(std::u64::MAX),
@@ -248,7 +250,11 @@ impl Default for Builder {
     }
 }
 
-impl Builder {
+impl<R> Builder<R>
+where
+    R: Service<dns::Name> + Send + Sync + Default + Clone + 'static,
+    HttpsConnector<HttpConnector<R>>: hyper::client::connect::Connect,
+{
     /// Set request timeout
     ///
     /// Default is no timeout
@@ -267,20 +273,20 @@ impl Builder {
         self
     }
 
-    pub fn with_client(mut self, client: HyperClient) -> Self {
+    pub fn with_client(mut self, client: HyperClient<R>) -> Self {
         self.client = Some(client);
         self
     }
 
     /// Create `RestClient` with the configuration in this builder
-    pub fn build(self, url: &str) -> Result<RestClient, Error> {
+    pub fn build(self, url: &str) -> Result<RestClient<R>, Error> {
         RestClient::with_builder(url, self)
     }
 
     #[cfg(feature = "blocking")]
     /// Create [`blocking::RestClient`](blocking/struct.RestClient.html) with the configuration in
     /// this builder
-    pub fn blocking(self, url: &str) -> Result<blocking::RestClient, Error> {
+    pub fn blocking(self, url: &str) -> Result<blocking::RestClient<R>, Error> {
         RestClient::with_builder(url, self).and_then(|client| client.try_into())
     }
 }
@@ -297,40 +303,47 @@ pub trait RestPath<T> {
     fn get_path(par: T) -> Result<String, Error>;
 }
 
-impl RestClient {
+impl<R> RestClient<R>
+where
+    R: Service<dns::Name> + Send + Sync + Default + Clone + 'static,
+    HttpsConnector<HttpConnector<R>>: hyper::client::connect::Connect,
+{
     /// Construct new client with default configuration to make HTTP requests.
     ///
     /// Use `Builder` to configure the client.
-    pub fn new(url: &str) -> Result<RestClient, Error> {
-        RestClient::with_builder(url, RestClient::builder())
+    pub fn new(url: &str) -> Result<RestClient<R>, Error> {
+        RestClient::<R>::with_builder(url, Self::builder())
     }
 
     /// Construct new blocking client with default configuration to make HTTP requests.
     ///
     /// Use `Builder` to configure the client.
     #[cfg(feature = "blocking")]
-    pub fn new_blocking(url: &str) -> Result<blocking::RestClient, Error> {
+    pub fn new_blocking(url: &str) -> Result<blocking::RestClient<R>, Error> {
         RestClient::new(url).and_then(|client| client.try_into())
     }
 
     #[cfg(feature = "native-tls")]
-    fn build_client() -> HyperClient
+    fn build_client() -> HyperClient<R>
     {
-        Client::builder().build(HttpsConnector::new())
+        let http_connector = HttpConnector::new_with_resolver(R::default());
+        let https_connector = HttpsConnector::new_with_connector(http_connector);
+        Client::builder().build(https_connector)
     }
 
     #[cfg(feature = "rustls")]
-    fn build_client() -> HyperClient
+    fn build_client() -> HyperClient<R>
     {
-        let connector = HttpsConnectorBuilder::new()
+        let http_connector = HttpConnector::new_with_resolver(R::default());
+        let https_connector = HttpsConnectorBuilder::new()
             .with_native_roots()
             .https_or_http()
             .enable_all_versions()
-            .build();
-        Client::builder().build(connector)
+            .wrap_connector(http_connector);
+        Client::builder().build(https_connector)
     }
 
-    fn with_builder(url: &str, builder: Builder) -> Result<RestClient, Error> {
+    fn with_builder(url: &str, builder: Builder<R>) -> Result<RestClient<R>, Error> {
         let client = match builder.client {
             Some(client) => client,
             None => {
@@ -353,7 +366,7 @@ impl RestClient {
     }
 
     /// Configure a client
-    pub fn builder() -> Builder {
+    pub fn builder() -> Builder<R> {
         Builder::default()
     }
 
