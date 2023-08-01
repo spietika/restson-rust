@@ -306,26 +306,32 @@ pub trait RestPath<T> {
     fn get_path(par: T) -> Result<String, Error>;
 }
 
+impl RestClient<GaiResolver> {
+    /// Construct new client with default configuration and DNS resolver
+    /// implementation to make HTTP requests.
+    ///
+    /// Use `Builder` to configure the client or to use a different
+    /// resolver type.
+    pub fn new(url: &str) -> Result<RestClient<GaiResolver>, Error> {
+        RestClient::with_builder(url, Self::builder())
+    }
+
+    /// Construct new blocking client with default configuration and DNS resolver
+    /// implementation to make HTTP requests.
+    ///
+    /// Use `Builder` to configure the client or to use a different
+    /// resolver type.
+    #[cfg(feature = "blocking")]
+    pub fn new_blocking(url: &str) -> Result<blocking::RestClient<GaiResolver>, Error> {
+        RestClient::new(url).and_then(|client| client.try_into())
+    }
+}
+
 impl<R> RestClient<R>
 where
     R: Service<dns::Name> + Send + Sync + Default + Clone + 'static,
     HttpsConnector<HttpConnector<R>>: hyper::client::connect::Connect,
 {
-    /// Construct new client with default configuration to make HTTP requests.
-    ///
-    /// Use `Builder` to configure the client.
-    pub fn new(url: &str) -> Result<RestClient<R>, Error> {
-        RestClient::<R>::with_builder(url, Self::builder())
-    }
-
-    /// Construct new blocking client with default configuration to make HTTP requests.
-    ///
-    /// Use `Builder` to configure the client.
-    #[cfg(feature = "blocking")]
-    pub fn new_blocking(url: &str) -> Result<blocking::RestClient<R>, Error> {
-        RestClient::new(url).and_then(|client| client.try_into())
-    }
-
     #[cfg(feature = "native-tls")]
     fn build_client() -> HyperClient<R>
     {
