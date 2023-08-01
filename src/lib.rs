@@ -52,6 +52,9 @@ use hyper_tls::HttpsConnector;
 #[cfg(feature = "rustls")]
 use hyper_rustls::{HttpsConnector, HttpsConnectorBuilder};
 
+use resolvers::GaiResolver;
+
+pub mod resolvers;
 #[cfg(feature = "blocking")]
 pub mod blocking;
 
@@ -121,7 +124,7 @@ impl<T> Deref for Response<T> {
 }
 
 /// REST client to make HTTP GET and POST requests.
-pub struct RestClient<R = dns::GaiResolver> {
+pub struct RestClient<R = GaiResolver> {
     client: HyperClient<R>,
     baseurl: url::Url,
     auth: Option<String>,
@@ -170,7 +173,7 @@ pub enum Error {
 }
 
 /// Builder for `RestClient`
-pub struct Builder<R = dns::GaiResolver> {
+pub struct Builder<R = GaiResolver> {
     /// Request timeout
     timeout: Duration,
 
