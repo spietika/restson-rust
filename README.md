@@ -144,7 +144,7 @@ HTTP PATCH requests are also supported and the interface is similar to POST and 
 
 **DELETE**
 
-Restson supports HTTP DELETE requests to API paths. Normally DELETE request is sent to API URL without message body. However, if message body or query parameters are needed, `delete_with` can be used. Moreover, the response status code from server is checked, but the response body is not captured.
+Restson supports HTTP DELETE requests to API paths. Normally DELETE request is sent to API URL without message body. However, if message body or query parameters are needed, `delete_with` can be used. Moreover, while it is not very common for the server to send response body to DELETE request, it is still possible to use `delete_capture` and `delete_capture_with` functions to capture it.
 
 Similarly with other requests, the path is obtained from `RestPath` trait.
 

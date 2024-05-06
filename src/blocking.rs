@@ -210,4 +210,27 @@ impl RestClient {
     {
         self.runtime.block_on(self.inner_client.delete_with(params, data, query))
     }
+
+    /// Make a DELETE request and capture returned body.
+    pub fn delete_capture<U, T, K>(&self, params: U, data: &T) -> Result<Response<K>, Error>
+    where
+        T: serde::Serialize + RestPath<U>,
+        K: serde::de::DeserializeOwned,
+    {
+        self.runtime.block_on(self.inner_client.delete_capture(params, data))
+    }
+
+    /// Make a DELETE request with query parameters and capture returned body.
+    pub fn delete_capture_with<U, T, K>(
+        &self,
+        params: U,
+        data: &T,
+        query: &Query<'_>,
+    ) -> Result<Response<K>, Error>
+    where
+        T: serde::Serialize + RestPath<U>,
+        K: serde::de::DeserializeOwned,
+    {
+        self.runtime.block_on(self.inner_client.delete_capture_with(params, data, query))
+    }
 }

@@ -500,7 +500,7 @@ impl RestClient {
         T: serde::Serialize + RestPath<U>,
         K: serde::de::DeserializeOwned,
     {
-        self.post_or_put_capture(Method::POST, params, data).await
+        self.generic_capture(Method::POST, params, data).await
     }
 
     /// Make a PUT request and capture returned body.
@@ -509,7 +509,7 @@ impl RestClient {
         T: serde::Serialize + RestPath<U>,
         K: serde::de::DeserializeOwned,
     {
-        self.post_or_put_capture(Method::PUT, params, data).await
+        self.generic_capture(Method::PUT, params, data).await
     }
 
     /// Make a PATCH request and capture returned body.
@@ -518,10 +518,19 @@ impl RestClient {
         T: serde::Serialize + RestPath<U>,
         K: serde::de::DeserializeOwned,
     {
-        self.post_or_put_capture(Method::PATCH, params, data).await
+        self.generic_capture(Method::PATCH, params, data).await
     }
 
-    async fn post_or_put_capture<U, T, K>(
+    /// Make a DELETE request and capture returned body.
+    pub async fn delete_capture<U, T, K>(&self, params: U, data: &T) -> Result<Response<K>, Error>
+    where
+        T: serde::Serialize + RestPath<U>,
+        K: serde::de::DeserializeOwned,
+    {
+        self.generic_capture(Method::DELETE, params, data).await
+    }
+
+    async fn generic_capture<U, T, K>(
         &self,
         method: Method,
         params: U,
@@ -549,7 +558,7 @@ impl RestClient {
         T: serde::Serialize + RestPath<U>,
         K: serde::de::DeserializeOwned,
     {
-        self.post_or_put_capture_with(Method::POST, params, data, query).await
+        self.generic_capture_with(Method::POST, params, data, query).await
     }
 
     /// Make a PUT request with query parameters and capture returned body.
@@ -563,7 +572,7 @@ impl RestClient {
         T: serde::Serialize + RestPath<U>,
         K: serde::de::DeserializeOwned,
     {
-        self.post_or_put_capture_with(Method::PUT, params, data, query).await
+        self.generic_capture_with(Method::PUT, params, data, query).await
     }
 
     /// Make a PATCH request with query parameters and capture returned body.
@@ -577,10 +586,24 @@ impl RestClient {
         T: serde::Serialize + RestPath<U>,
         K: serde::de::DeserializeOwned,
     {
-        self.post_or_put_capture_with(Method::PATCH, params, data, query).await
+        self.generic_capture_with(Method::PATCH, params, data, query).await
     }
 
-    async fn post_or_put_capture_with<U, T, K>(
+    /// Make a DELETE request with query parameters and capture returned body.
+    pub async fn delete_capture_with<U, T, K>(
+        &self,
+        params: U,
+        data: &T,
+        query: &Query<'_>,
+    ) -> Result<Response<K>, Error>
+    where
+        T: serde::Serialize + RestPath<U>,
+        K: serde::de::DeserializeOwned,
+    {
+        self.generic_capture_with(Method::DELETE, params, data, query).await
+    }
+
+    async fn generic_capture_with<U, T, K>(
         &self,
         method: Method,
         params: U,
