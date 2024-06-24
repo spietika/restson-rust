@@ -1,20 +1,27 @@
 //! Blocking variant of the `RestClient`
 
 use crate::{Error, Query, Response, RestClient as AsyncRestClient, RestPath};
+use hyper::client::connect::{dns, HttpConnector};
 use hyper::header::HeaderValue;
+use hyper::service::Service;
 use std::{convert::TryFrom, time::Duration};
 use tokio::runtime::{Builder, Runtime};
 
+#[cfg(feature = "native-tls")]
+use hyper_tls::HttpsConnector;
+#[cfg(feature = "rustls")]
+use hyper_rustls::HttpsConnector;
+
 /// REST client to make HTTP GET and POST requests. Blocking version.
-pub struct RestClient {
-    inner_client: AsyncRestClient,
+pub struct RestClient<R> {
+    inner_client: AsyncRestClient<R>,
     runtime: Runtime,
 }
 
-impl TryFrom<AsyncRestClient> for RestClient {
+impl<R> TryFrom<AsyncRestClient<R>> for RestClient<R> {
     type Error = Error;
 
-    fn try_from(other: AsyncRestClient) -> Result<Self, Self::Error> {
+    fn try_from(other: AsyncRestClient<R>) -> Result<Self, Self::Error> {
         match Builder::new_current_thread().enable_all().build() {
             Ok(runtime) => Ok(Self { inner_client: other, runtime }),
             Err(e) => Err(Error::IoError(e)),
@@ -22,7 +29,11 @@ impl TryFrom<AsyncRestClient> for RestClient {
     }
 }
 
-impl RestClient {
+impl<R> RestClient<R>
+where
+    R: Service<dns::Name> + Send + Sync + Default + Clone + 'static,
+    HttpsConnector<HttpConnector<R>>: hyper::client::connect::Connect,
+{
     /// Set whether a message body consisting only 'null' (from serde serialization)
     /// is sent in POST/PUT
     pub fn set_send_null_body(&mut self, send_null: bool) {
